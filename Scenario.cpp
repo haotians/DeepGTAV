@@ -84,6 +84,7 @@ void Scenario::parseDatasetConfig(const Value& dc, bool setDefaults) {
 	else if (setDefaults) trafficSigns = _TRAFFIC_SIGNS_;
 
 	if (!dc["direction"].IsNull()) {
+		direction = true;
 		if (!dc["direction"][0].IsNull()) dir.x = dc["direction"][0].GetFloat();
 		else if (setDefaults) direction = _DIRECTION_;
 
@@ -149,9 +150,8 @@ void Scenario::buildScenario() {
 	float heading;
 
 	GAMEPLAY::SET_RANDOM_SEED(std::time(NULL));
-	while (!PATHFIND::LOAD_ALL_PATH_NODES(TRUE)) WAIT(0);
+	while (!PATHFIND::_0xF7B79A50B905A30D(-8192.0f, 8192.0f, -8192.0f, 8192.0f)) WAIT(0);
 	PATHFIND::GET_CLOSEST_VEHICLE_NODE_WITH_HEADING(x, y, 0, &pos, &heading, 0, 0, 0);
-	PATHFIND::LOAD_ALL_PATH_NODES(FALSE);
 
 	ENTITY::DELETE_ENTITY(&vehicle);
 	vehicleHash = GAMEPLAY::GET_HASH_KEY((char*)_vehicle);
@@ -596,15 +596,15 @@ void Scenario::setPedsList(){
 
 
 void Scenario::setThrottle(){
-	d["throttle"] = getFloatValue(vehicle, 0x8FC);
+	d["throttle"] = getFloatValue(vehicle, 0x92C);
 }
 
 void Scenario::setBrake(){
-	d["brake"] = getFloatValue(vehicle, 0x900);
+	d["brake"] = getFloatValue(vehicle, 0x930);
 }
 
 void Scenario::setSteering(){
-	d["steering"] = getFloatValue(vehicle, 0x8F4) / -0.7;
+	d["steering"] = -getFloatValue(vehicle, 0x924) / 0.6981317008;
 }
 
 void Scenario::setSpeed(){
@@ -631,8 +631,9 @@ void Scenario::setTime(){
 void Scenario::setDirection(){
 	int direction;
 	float distance;
+	Vehicle temp_vehicle;
 	Document::AllocatorType& allocator = d.GetAllocator();
-	PATHFIND::GENERATE_DIRECTIONS_TO_COORD(dir.x, dir.y, dir.z, TRUE, &direction, &vehicle, &distance);
+	PATHFIND::GENERATE_DIRECTIONS_TO_COORD(dir.x, dir.y, dir.z, TRUE, &direction, &temp_vehicle, &distance);
 	Value _direction(kArrayType);
 	_direction.PushBack(direction, allocator).PushBack(distance, allocator);
 	d["direction"] = _direction;
