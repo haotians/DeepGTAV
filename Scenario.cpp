@@ -6,9 +6,37 @@
 #include "Rewarders\SpeedRewarder.h"
 #include "defaults.h"
 #include <time.h>
-
+#include <Eigen/Core>
+#include <vector>
+#include <iostream>
+#include <fstream>
 char* Scenario::weatherList[14] = { "CLEAR", "EXTRASUNNY", "CLOUDS", "OVERCAST", "RAIN", "CLEARING", "THUNDER", "SMOG", "FOGGY", "XMAS", "SNOWLIGHT", "BLIZZARD", "NEUTRAL", "SNOW" };
 char* Scenario::vehicleList[3] = { "blista", "voltic", "packer" };
+
+std::ofstream debugfile("debug.txt", std::ofstream::out | std::ofstream::app);
+char text[100];
+
+static Eigen::Vector3f get_pos_from_2d_and_dist(const int x, const int y, const int dist, const double res_x, const double res_y, const Eigen::Vector3f& cam_coords, const Eigen::Vector3f& cam_rotation, float cam_near_clip, float cam_field_of_view);
+
+
+void display(const char * str, int secs) {
+	sprintf(text, str);
+	UI::CLEAR_PRINTS();
+	UI::_SET_TEXT_ENTRY_2("STRING");
+	UI::_ADD_TEXT_COMPONENT_STRING(text);
+	UI::_DRAW_SUBTITLE_TIMED(1000 * secs, TRUE);
+	/*
+	int total_tic = secs * CLOCKS_PER_SEC;
+	for (int i = 0; i < total_tic; i++) {
+		sprintf(text, str);
+		UI::SET_TEXT_CENTRE(TRUE);
+		UI::SET_TEXT_SCALE(0.5f, 0.5f);
+		UI::SET_TEXT_COLOUR(255, 255, 255, 255);
+		UI::_SET_TEXT_ENTRY("STRING");
+		UI::_ADD_TEXT_COMPONENT_STRING(text);
+		UI::_DRAW_TEXT(0.5f, 0.5f);
+	}*/
+}
 
 void Scenario::parseScenarioConfig(const Value& sc, bool setDefaults) {
 	const Value& location = sc["location"];
@@ -192,10 +220,43 @@ void Scenario::buildScenario() {
 	CAM::RENDER_SCRIPT_CAMS(TRUE, FALSE, 0, TRUE, TRUE);
 
 	AI::CLEAR_PED_TASKS(ped);
-	if (_drivingMode >= 0) AI::TASK_VEHICLE_DRIVE_WANDER(ped, vehicle, _setSpeed, _drivingMode);
+	display("Setting first vehicle now...", 5);
+
+	for (int i = 0; i < 4; i++) {
+		std::string s("setting cars..");
+		s = s + " " + std::to_string(i);
+		display(s.c_str(), 5);
+		Vector3 cam_pos = CAM::GET_CAM_COORD(camera);
+		Vector3 theta = ENTITY::GET_ENTITY_ROTATION(this->vehicle, 1);
+		float near_clip = CAM::GET_CAM_NEAR_CLIP(camera);
+		float fov = CAM::GET_CAM_FOV(camera);
+
+		int idx = i % 2;
+		Vehicle vehicle_temp;
+		
+		vehicleHash = GAMEPLAY::GET_HASH_KEY("slamvan");
+		STREAMING::REQUEST_MODEL(vehicleHash);
+		while (!STREAMING::HAS_MODEL_LOADED(vehicleHash)) WAIT(0);
+
+		Vector3 coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(this->vehicle, 0.0, 10.0 * i, 0.0);
+
+
+
+
+		//while (!ENTITY::DOES_ENTITY_EXIST(vehicle_temp)) {
+			vehicle_temp = VEHICLE::CREATE_VEHICLE(vehicleHash, coords.x, coords.y, coords.z, heading, TRUE, TRUE);
+			//WAIT(0);
+		//}
+		VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(vehicle_temp);
+		VEHICLE::SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(vehicle_temp, 0, 153, 0);
+		
+	}
+
+	//if (_drivingMode >= 0) AI::TASK_VEHICLE_DRIVE_WANDER(ped, vehicle, _setSpeed, _drivingMode);
 }
 
 void Scenario::start(const Value& sc, const Value& dc) {
+	debugfile << "STARTING@@" << std::endl;
 	if (running) return;
 
 	//Parse options
@@ -624,4 +685,55 @@ void Scenario::setDirection(){
 
 void Scenario::setReward() {
 	d["reward"] = rewarder->computeReward(vehicle);
+}
+
+Eigen::Vector3f rotate(Eigen::Vector3f a, Eigen::Vector3f theta)
+{
+	Eigen::Vector3f d;
+
+	d(0) = (float)cos((double)theta(2))*((float)cos((double)theta(1))*a(0) + (float)sin((double)theta(1))*((float)sin((double)theta(0))*a(1) + (float)cos((double)theta(0))*a(2))) - (float)sin((double)theta(2))*((float)cos((double)theta(0))*a(1) - (float)sin((double)theta(0))*a(2));
+	d(1) = (float)sin((double)theta(2))*((float)cos((double)theta(1))*a(0) + (float)sin((double)theta(1))*((float)sin((double)theta(0))*a(1) + (float)cos((double)theta(0))*a(2))) + (float)cos((double)theta(2))*((float)cos((double)theta(0))*a(1) - (float)sin((double)theta(0))*a(2));
+	d(2) = -(float)sin((double)theta(1))*a(0) + (float)cos((double)theta(1))*((float)sin((double)theta(0))*a(1) + (float)cos((double)theta(0))*a(2));
+
+	return d;
+}
+
+static Eigen::Vector3f get_pos_from_2d_and_dist(const int x, const int y, const int dist, const double res_x, const double res_y, const Eigen::Vector3f& cam_coords, const Eigen::Vector3f& cam_rotation, float cam_near_clip, float cam_field_of_view) {
+	static const Eigen::Vector3f WORLD_NORTH(0.0, 1.0, 0.0);
+	static const Eigen::Vector3f WORLD_UP(0.0, 0.0, 1.0);
+	static const Eigen::Vector3f WORLD_EAST(1.0, 0.0, 0.0);
+	Eigen::Vector3f theta = (3.14159 / 180.0) * cam_rotation;
+	auto cam_dir = rotate(WORLD_NORTH, theta);
+
+
+	auto clip_plane_center = cam_coords + cam_near_clip * cam_dir;
+	auto camera_center = -cam_near_clip * cam_dir;
+	auto near_clip_height = 2 * cam_near_clip * tan(cam_field_of_view / 2. * (3.14159 / 180.)); // field of view is returned vertically
+	auto near_clip_width = near_clip_height * GRAPHICS::_GET_SCREEN_ASPECT_RATIO(false);
+
+	const Eigen::Vector3f cam_up = rotate(WORLD_UP, theta);
+	const Eigen::Vector3f cam_east = rotate(WORLD_EAST, theta);
+
+
+	//const Eigen::Vector3f near_clip_to_target = vertex - clip_plane_center; // del
+
+	//Eigen::Vector3f camera_to_target = near_clip_to_target - camera_center; // Total distance - subtracting a negative to add clip distance
+
+
+
+	//Eigen::Vector3f camera_to_target_unit_vector = camera_to_target * (1. / camera_to_target.norm()); // Unit vector in direction of plane / line intersection
+
+	//double view_plane_dist = cam_near_clip / cam_dir.dot(camera_to_target_unit_vector);
+
+	Eigen::Vector3f up3d, forward3d, right3d;
+	up3d = rotate(WORLD_UP, cam_rotation);
+	right3d = rotate(WORLD_EAST, cam_rotation);
+	forward3d = rotate(WORLD_NORTH, cam_rotation);
+	Eigen::Vector3f new_origin = clip_plane_center + (near_clip_height / 2.) * cam_up - (near_clip_width / 2.) * cam_east;
+	Eigen::Vector3f pt_on_clip_plane;
+	pt_on_clip_plane = new_origin + (x / res_x) * near_clip_width * cam_east - (y / res_y) * near_clip_height * cam_up;
+
+	Eigen::Vector3f ori_to_pt;
+	ori_to_pt = pt_on_clip_plane - cam_coords;
+	return cam_coords + ori_to_pt * (1.0 / ori_to_pt.norm()) * dist;
 }
