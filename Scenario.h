@@ -62,6 +62,7 @@ private:
 public:
 	int rate;
 
+	void buildFormalScenarios(const Value & cfgs);
 	void start(const Value& sc, const Value& dc);
 	void stop();
 	void config(const Value& sc, const Value& dc);
@@ -75,6 +76,10 @@ private:
 	void parseScenarioConfig(const Value& sc, bool setDefaults);
 	void parseDatasetConfig(const Value& dc, bool setDefaults);
 	void buildScenario();
+
+	void clearAllVehicles(void);
+
+	void buildOneFormalScenario(const Value & cfg);
 
 	void setVehiclesList();
 	void setPedsList();

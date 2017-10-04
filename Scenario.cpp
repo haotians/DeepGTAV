@@ -8,16 +8,21 @@
 #include <time.h>
 #include <Eigen/Core>
 #include <vector>
+#include <string>
 #include <iostream>
 #include <fstream>
+#include <chrono>
+#include <thread>
+
 char* Scenario::weatherList[14] = { "CLEAR", "EXTRASUNNY", "CLOUDS", "OVERCAST", "RAIN", "CLEARING", "THUNDER", "SMOG", "FOGGY", "XMAS", "SNOWLIGHT", "BLIZZARD", "NEUTRAL", "SNOW" };
 char* Scenario::vehicleList[3] = { "blista", "voltic", "packer" };
 
-std::ofstream debugfile("debug.txt", std::ofstream::out | std::ofstream::app);
+extern std::ofstream debugfile("debug.txt", std::ofstream::out | std::ofstream::app);
 char text[100];
 
 static Eigen::Vector3f get_pos_from_2d_and_dist(const int x, const int y, const int dist, const double res_x, const double res_y, const Eigen::Vector3f& cam_coords, const Eigen::Vector3f& cam_rotation, float cam_near_clip, float cam_field_of_view);
 
+std::vector<Vehicle> all_vehicles;
 
 void display(const char * str, int secs) {
 	sprintf(text, str);
@@ -254,6 +259,165 @@ void Scenario::buildScenario() {
 
 	//if (_drivingMode >= 0) AI::TASK_VEHICLE_DRIVE_WANDER(ped, vehicle, _setSpeed, _drivingMode);
 }
+
+void Scenario::clearAllVehicles(void) {
+	for (int i = 0; i < all_vehicles.size(); i++) {
+		ENTITY::SET_ENTITY_AS_MISSION_ENTITY(all_vehicles[i], true, true);
+		VEHICLE::DELETE_VEHICLE(&all_vehicles[i]);
+	}
+}
+
+void Scenario::buildOneFormalScenario(const Value& cfg)
+{
+	clearAllVehicles();
+	Vector3 pos, rotation;
+	Hash vehicleHash;
+	float heading;
+	int hour, min;
+	rapidjson::SizeType vehicle_num = cfg["vehicles"].Size();
+	const Value& vehicles = cfg["vehicles"];
+
+	pos.x = cfg["location"][0].GetFloat();
+	pos.y = cfg["location"][1].GetFloat();
+	pos.z = cfg["location"][2].GetFloat(); //Probably need to get the gound height
+
+	//GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(pos.x, pos.y, pos.z, &(pos.z), 0);
+
+	hour = cfg["time"][0].GetInt();
+	min  = cfg["time"][1].GetInt();
+
+	_weather = cfg["weather"].GetString();
+
+	heading = cfg["view_heading"].GetFloat();
+
+	//GAMEPLAY::SET_RANDOM_SEED(std::time(NULL)); // FIXME
+
+	//while (!PATHFIND::LOAD_ALL_PATH_NODES(TRUE)) WAIT(0);
+	//PATHFIND::GET_CLOSEST_VEHICLE_NODE_WITH_HEADING(x, y, 0, &pos, &heading, 0, 0, 0);
+	//PATHFIND::LOAD_ALL_PATH_NODES(FALSE);
+
+	//ENTITY::DELETE_ENTITY(&vehicle);
+	//_vehicle = "voltic";
+	//vehicleHash = GAMEPLAY::GET_HASH_KEY((char*)_vehicle);
+	//STREAMING::REQUEST_MODEL(vehicleHash);
+	//while (!STREAMING::HAS_MODEL_LOADED(vehicleHash)) WAIT(0);
+	//while (!ENTITY::DOES_ENTITY_EXIST(vehicle)) {
+	//	vehicle = VEHICLE::CREATE_VEHICLE(vehicleHash, pos.x, pos.y, pos.z, heading, FALSE, FALSE);
+	//	WAIT(0);
+	//}
+	//VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(vehicle);
+
+	// get entity to teleport
+	Entity e = PLAYER::PLAYER_PED_ID();
+	if (PED::IS_PED_IN_ANY_VEHICLE(e, 0))
+		e = PED::GET_VEHICLE_PED_IS_USING(e);
+
+	ENTITY::SET_ENTITY_HEADING(e, heading);
+	ENTITY::SET_ENTITY_COORDS_NO_OFFSET(e, pos.x, pos.y, pos.z, 0, 0, 1);
+
+	WAIT(0);
+
+	
+
+	//while (!ENTITY::DOES_ENTITY_EXIST(ped)) {
+	//	ped = PLAYER::PLAYER_PED_ID();
+	//	WAIT(0);
+	//}
+
+	//player = PLAYER::PLAYER_ID();
+	//PLAYER::START_PLAYER_TELEPORT(player, pos.x, pos.y, pos.z, heading, 0, 0, 0);
+	//while (PLAYER::IS_PLAYER_TELEPORT_ACTIVE()) WAIT(0);
+
+	//PED::SET_PED_INTO_VEHICLE(ped, vehicle, -1);
+	//STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(vehicleHash);
+
+	TIME::SET_CLOCK_TIME(hour, minute, 0);
+
+	GAMEPLAY::SET_WEATHER_TYPE_NOW_PERSIST((char*)_weather);
+
+	//rotation = ENTITY::GET_ENTITY_ROTATION(vehicle, 1);
+	//CAM::DESTROY_ALL_CAMS(TRUE);
+	//camera = CAM::CREATE_CAM("DEFAULT_SCRIPTED_CAMERA", TRUE);
+	//if (strcmp(_vehicle, "packer") == 0) CAM::ATTACH_CAM_TO_ENTITY(camera, vehicle, 0, 2.35, 1.7, TRUE);
+	//else CAM::ATTACH_CAM_TO_ENTITY(camera, vehicle, 0, 0.5, 0.8, TRUE);
+	//CAM::SET_CAM_FOV(camera, 60);
+	//CAM::SET_CAM_ACTIVE(camera, TRUE);
+	//CAM::SET_CAM_ROT(camera, rotation.x, rotation.y, rotation.z, 1);
+	//CAM::SET_CAM_INHERIT_ROLL_VEHICLE(camera, TRUE);
+	//CAM::RENDER_SCRIPT_CAMS(TRUE, FALSE, 0, TRUE, TRUE);
+
+
+	//AI::CLEAR_PED_TASKS(ped);
+	
+	for (rapidjson::SizeType i = 0; i < vehicle_num; i++) {
+		const Value& v = vehicles[i];
+		//std::string model = std::string(v["model"].GetString());
+		float loc_offset_x = v["location_offset"][0].GetFloat();
+		float loc_offset_y = v["location_offset"][1].GetFloat();
+		float loc_offset_z = v["location_offset"][2].GetFloat();
+		float heading_diff = v["heading"].GetFloat();
+		int r = v["color"][0].GetInt();
+		int g = v["color"][1].GetInt();
+		int b = v["color"][2].GetInt();
+
+		debugfile << "Vehicle " << i << std::endl;
+		debugfile << "location_offset is : " << loc_offset_x << ", " << loc_offset_y << ", " << loc_offset_z << std::endl;
+		debugfile << "heading is : " << heading << std::endl;
+		debugfile << "color is : " << r << ", " << g << ", " << b << std::endl;
+
+
+		char model[20];
+		strcpy(model, v["model"].GetString());
+
+		vehicleHash = GAMEPLAY::GET_HASH_KEY(model);
+		debugfile << "The car model is : " << model << std::endl;
+
+		if (STREAMING::IS_MODEL_IN_CDIMAGE(vehicleHash) && STREAMING::IS_MODEL_A_VEHICLE(vehicleHash)) {
+			STREAMING::REQUEST_MODEL(vehicleHash);
+			while (!STREAMING::HAS_MODEL_LOADED(vehicleHash)) WAIT(0);
+
+			Vector3 coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(PLAYER::PLAYER_PED_ID(), loc_offset_x, loc_offset_y, loc_offset_z);
+
+			//GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(coords.x, coords.y, coords.z, &(coords.z), 0);
+
+			Vehicle vehicle_temp = VEHICLE::CREATE_VEHICLE(vehicleHash, coords.x, coords.y, coords.z, 0.0, TRUE, TRUE);
+			all_vehicles.push_back(vehicle_temp);
+			VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(vehicle_temp);
+			VEHICLE::SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(vehicle_temp, r, g, b);
+			ENTITY::SET_ENTITY_HEADING(vehicle_temp, heading + heading_diff);
+			WAIT(0);
+			STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(vehicleHash);
+		}
+		else
+			debugfile << "The model doesn't exist!!" << std::endl;
+
+	}
+}
+
+void Scenario::buildFormalScenarios(const Value& cfgs)
+{
+	rapidjson::SizeType cfgs_num = cfgs.Size();
+
+	for (rapidjson::SizeType i = 0; i < cfgs_num; i++) {
+		debugfile << "Processing Scenario : " << i << std::endl;
+		buildOneFormalScenario(cfgs[i]);
+		//std::this_thread::sleep_for(std::chrono::seconds(10));
+	}
+
+	//const Value& cfg1 = cfgs[0];
+	///*'{"Formal_Configs": [{"location": [1.0, 2.0], "time": [9, 34], "vehicles": [{"location_offset": [1, 2, 3], "heading": 1, "color": [2, 3, 4]}, {"location_offset": null, "heading": 1, "color": null}], "vehicle_num": 2},
+	//{"location": [1.0, 2.0], "time": [9, 34], "vehicles": [{"location_offset": [1, 2, 3], "heading": 1, "color": [2, 3, 4]}, {"location_offset": null, "heading": 1, "color": null}], "vehicle_num": 2}]}'*/
+	//const Value& location = cfg1["location"];
+	//debugfile << "The location is: " << location[0].GetFloat() << ", " << location[1].GetFloat() << std::endl;
+	//const Value& time = cfg1["time"];
+	//debugfile << "The time is: " << time[0].GetFloat() << ", " << time[1].GetFloat() << std::endl;
+	//const Value& vehicles = cfg1["vehicles"];
+	//const Value& v1 = vehicles[0];
+	//debugfile << "The location offset of the first v is: " << v1["location_offset"][0].GetFloat() << ", " << v1["location_offset"][1].GetFloat() << ", " << v1["location_offset"][2].GetFloat() << std::endl;
+	//debugfile << "The num of vehicles in the second scenario is: " << cfgs[1]["vehicles"].Size() << std::endl;
+	////for (int i = 0; i < )
+}
+
 
 void Scenario::start(const Value& sc, const Value& dc) {
 	debugfile << "STARTING@@" << std::endl;
