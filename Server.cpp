@@ -8,6 +8,7 @@
 using namespace rapidjson;
 
 extern std::ofstream debugfile;
+void wait(int);
 
 Server::Server(unsigned int port) {
 	struct sockaddr_in server;
@@ -45,7 +46,7 @@ Server::Server(unsigned int port) {
 }
 
 void Server::checkClient(){
-	debugfile << "Inside checkClient()" << std::endl;
+	//debugfile << "Inside checkClient()" << std::endl;
 	SOCKET tmpSocket = SOCKET_ERROR;
 	tmpSocket = accept(ServerSocket, NULL, NULL);
 	if (tmpSocket != SOCKET_ERROR) {
@@ -131,23 +132,11 @@ void Server::checkRecvMessage() {
 	}
 	else if (d.HasMember("formal_configs")) {
 		const Value& cfgs = d["formal_configs"];
-		//const Value& cfg1 = cfgs[0];
-		///*'{"Formal_Configs": [{"location": [1.0, 2.0], "time": [9, 34], "vehicles": [{"location_offset": [1, 2, 3], "heading": 1, "color": [2, 3, 4]}, {"location_offset": null, "heading": 1, "color": null}], "vehicle_num": 2}, 
-		//					   {"location": [1.0, 2.0], "time": [9, 34], "vehicles": [{"location_offset": [1, 2, 3], "heading": 1, "color": [2, 3, 4]}, {"location_offset": null, "heading": 1, "color": null}], "vehicle_num": 2}]}'*/
-		//const Value& location = cfg1["location"];
-		//debugfile << "The location is: " << location[0].GetFloat() << ", " << location[1].GetFloat() << std::endl;
-		//const Value& time = cfg1["time"];
-		//debugfile << "The time is: " << time[0].GetFloat() << ", " << time[1].GetFloat() << std::endl;
-		//const Value& vehicles = cfg1["vehicles"];
-		//const Value& v1 = vehicles[0];
-		//debugfile << "The location offset of the first v is: " << v1["location_offset"][0].GetFloat() << ", " << v1["location_offset"][1].GetFloat() << ", " << v1["location_offset"][2].GetFloat() << std::endl;
-		//debugfile << "The num of vehicles in the second scenario is: " << cfgs[1]["vehicles"].Size() << std::endl;
-		////debugfile.close();
 
-		debugfile << "Before Return" << std::endl;
-		
-		scenario.buildFormalScenarios(cfgs);
-		debugfile << "After Return" << std::endl;
+		scenario.screenCapturer = new ScreenCapturer(1920, 1200);
+		isFormalScenarios = true;
+		scenario.buildFormalScenarios(cfgs, this);
+		isFormalScenarios = false;
 	}
 	else {
 		return; //Invalid message
@@ -157,16 +146,24 @@ void Server::checkRecvMessage() {
 void Server::checkSendMessage() {
 	int error;
 	int r;
-	debugfile << "Inside checkSendMessage():" << std::endl;
-	if (sendOutputs && (((float)(std::clock() - lastSentMessage) / CLOCKS_PER_SEC) > (1.0 / scenario.rate))) {
-		if (messageSize == 0) {
-			message = scenario.generateMessage();
-			chmessage = message.GetString();
-			messageSize = message.GetSize();
-		}		
+	
+	if (isFormalScenarios) {
+		debugfile << "Capturing ..." << std::endl;
+		wait(10);
+		scenario.screenCapturer->capture();
+		//wait(10);
+	}
+
+	if (isFormalScenarios || (sendOutputs && (((float)(std::clock() - lastSentMessage) / CLOCKS_PER_SEC) > (1.0 / scenario.rate)))) {
+		//if (messageSize == 0) {
+		//	message = scenario.generateMessage();
+		//	chmessage = message.GetString();
+		//	messageSize = message.GetSize();
+		//}
 
 		if (!frameSent) {
 			if (!readyToSend) {
+				debugfile << "Sending ..." << std::endl;
 				send(ClientSocket, (const char*)&scenario.screenCapturer->length, sizeof(scenario.screenCapturer->length), 0);
 				error = WSAGetLastError();
 				if (error == WSAEWOULDBLOCK) return;
@@ -196,6 +193,7 @@ void Server::checkSendMessage() {
 
 		if (frameSent) {
 			if (!readyToSend) {
+				/*
 				send(ClientSocket, (const char*)&messageSize, sizeof(messageSize), 0);
 				error = WSAGetLastError();
 				if (error == WSAEWOULDBLOCK) return;
@@ -203,28 +201,28 @@ void Server::checkSendMessage() {
 					printf("\nError sending message length: %d", error);
 					resetState();
 					return;
-				}
+				}*/
 				readyToSend = true;
 				sendMessageLen = 0;
 			}
 
-			while (readyToSend && (sendMessageLen < messageSize)) {
-				r = send(ClientSocket, (const char*)(chmessage + sendMessageLen), messageSize - sendMessageLen, 0);
-				error = WSAGetLastError();
-				if (error == WSAEWOULDBLOCK) return;
-				if (error != 0 || r <= 1) {
-					printf("\nError sending message: %d", error);
-					resetState();
-					return;
-				}
-				sendMessageLen = sendMessageLen + r;
-			}
+			//while (readyToSend && (sendMessageLen < messageSize)) {
+			//	r = send(ClientSocket, (const char*)(chmessage + sendMessageLen), messageSize - sendMessageLen, 0);
+			//	error = WSAGetLastError();
+			//	if (error == WSAEWOULDBLOCK) return;
+			//	if (error != 0 || r <= 1) {
+			//		printf("\nError sending message: %d", error);
+			//		resetState();
+			//		return;
+			//	}
+			//	sendMessageLen = sendMessageLen + r;
+			//}
 			readyToSend = false;
 			messageSize = 0;
 			frameSent = false;
 		}
 		lastSentMessage = std::clock();
-	}	
+	}
 }
 
 void Server::resetState() {

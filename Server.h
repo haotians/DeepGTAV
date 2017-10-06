@@ -32,6 +32,7 @@ private:
 
 public:
 	bool clientConnected = false;
+	bool isFormalScenarios = false;
 	Scenario scenario;
 
 	Server(unsigned int port);

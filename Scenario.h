@@ -13,7 +13,7 @@
 #include "Rewarders\Rewarder.h"
 
 using namespace rapidjson;
-
+class Server;
 //#define DEBUG 1
 
 class Scenario {
@@ -62,7 +62,7 @@ private:
 public:
 	int rate;
 
-	void buildFormalScenarios(const Value & cfgs);
+	void buildFormalScenarios(const Value & cfgs, Server *const s);
 	void start(const Value& sc, const Value& dc);
 	void stop();
 	void config(const Value& sc, const Value& dc);
@@ -79,7 +79,7 @@ private:
 
 	void clearAllVehicles(void);
 
-	void buildOneFormalScenario(const Value & cfg);
+	void buildOneFormalScenario(const Value & cfg, Server *const server);
 
 	void setVehiclesList();
 	void setPedsList();

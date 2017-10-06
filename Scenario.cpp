@@ -13,6 +13,8 @@
 #include <fstream>
 #include <chrono>
 #include <thread>
+#include "Server.h"
+#include <windows.h>
 
 char* Scenario::weatherList[14] = { "CLEAR", "EXTRASUNNY", "CLOUDS", "OVERCAST", "RAIN", "CLEARING", "THUNDER", "SMOG", "FOGGY", "XMAS", "SNOWLIGHT", "BLIZZARD", "NEUTRAL", "SNOW" };
 char* Scenario::vehicleList[3] = { "blista", "voltic", "packer" };
@@ -23,6 +25,13 @@ char text[100];
 static Eigen::Vector3f get_pos_from_2d_and_dist(const int x, const int y, const int dist, const double res_x, const double res_y, const Eigen::Vector3f& cam_coords, const Eigen::Vector3f& cam_rotation, float cam_near_clip, float cam_field_of_view);
 
 std::vector<Vehicle> all_vehicles;
+
+void wait(int seconds)
+{
+	clock_t endwait;
+	endwait = clock() + seconds * CLOCKS_PER_SEC;
+	while (clock() < endwait) {}
+}
 
 void display(const char * str, int secs) {
 	sprintf(text, str);
@@ -267,7 +276,7 @@ void Scenario::clearAllVehicles(void) {
 	}
 }
 
-void Scenario::buildOneFormalScenario(const Value& cfg)
+void Scenario::buildOneFormalScenario(const Value& cfg, Server *const server)
 {
 	clearAllVehicles();
 	Vector3 pos, rotation;
@@ -392,15 +401,56 @@ void Scenario::buildOneFormalScenario(const Value& cfg)
 			debugfile << "The model doesn't exist!!" << std::endl;
 
 	}
+
+	WAIT(3000);
+	server->checkSendMessage();
+
 }
 
-void Scenario::buildFormalScenarios(const Value& cfgs)
+void Scenario::buildFormalScenarios(const Value& cfgs, Server *const server)
 {
+	//Vector3 pos, rotation;
+	//Hash vehicleHash;
+	//float heading;
+
+	//GAMEPLAY::SET_RANDOM_SEED(std::time(NULL));
+	//while (!PATHFIND::LOAD_ALL_PATH_NODES(TRUE)) WAIT(0);
+	//PATHFIND::GET_CLOSEST_VEHICLE_NODE_WITH_HEADING(x, y, 0, &pos, &heading, 0, 0, 0);
+	//PATHFIND::LOAD_ALL_PATH_NODES(FALSE);
+
+	//ENTITY::DELETE_ENTITY(&vehicle);
+	//_vehicle = "blista";
+	//vehicleHash = GAMEPLAY::GET_HASH_KEY((char*)_vehicle);
+	//STREAMING::REQUEST_MODEL(vehicleHash);
+	//while (!STREAMING::HAS_MODEL_LOADED(vehicleHash)) WAIT(0);
+	//while (!ENTITY::DOES_ENTITY_EXIST(vehicle)) {
+	//	vehicle = VEHICLE::CREATE_VEHICLE(vehicleHash, pos.x, pos.y, pos.z, heading, FALSE, FALSE);
+	//	WAIT(0);
+	//}
+	//VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(vehicle);
+
+	//while (!ENTITY::DOES_ENTITY_EXIST(ped)) {
+	//	ped = PLAYER::PLAYER_PED_ID();
+	//	WAIT(0);
+	//}
+
+	//player = PLAYER::PLAYER_ID();
+	//PLAYER::START_PLAYER_TELEPORT(player, pos.x, pos.y, pos.z, heading, 0, 0, 0);
+	//while (PLAYER::IS_PLAYER_TELEPORT_ACTIVE()) WAIT(0);
+
+	//PED::SET_PED_INTO_VEHICLE(ped, vehicle, -1);
+	//STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(vehicleHash);
+
+
+
+
+
+
 	rapidjson::SizeType cfgs_num = cfgs.Size();
 
 	for (rapidjson::SizeType i = 0; i < cfgs_num; i++) {
 		debugfile << "Processing Scenario : " << i << std::endl;
-		buildOneFormalScenario(cfgs[i]);
+		buildOneFormalScenario(cfgs[i], server);
 		//std::this_thread::sleep_for(std::chrono::seconds(10));
 	}
 
