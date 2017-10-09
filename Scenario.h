@@ -61,7 +61,7 @@ private:
 
 public:
 	int rate;
-
+	Server *server;
 	void buildFormalScenarios(const Value & cfgs, Server *const s);
 	void start(const Value& sc, const Value& dc);
 	void stop();
@@ -81,6 +81,7 @@ private:
 
 	void buildOneFormalScenario(const Value & cfg, Server *const server);
 
+	void setLidarPoints();
 	void setVehiclesList();
 	void setPedsList();
 	void setTrafficSignsList();

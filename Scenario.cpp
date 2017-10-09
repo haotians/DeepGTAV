@@ -16,6 +16,8 @@
 #include "Server.h"
 #include <windows.h>
 
+#define DEBUG 1
+
 char* Scenario::weatherList[14] = { "CLEAR", "EXTRASUNNY", "CLOUDS", "OVERCAST", "RAIN", "CLEARING", "THUNDER", "SMOG", "FOGGY", "XMAS", "SNOWLIGHT", "BLIZZARD", "NEUTRAL", "SNOW" };
 char* Scenario::vehicleList[3] = { "blista", "voltic", "packer" };
 
@@ -236,37 +238,37 @@ void Scenario::buildScenario() {
 	AI::CLEAR_PED_TASKS(ped);
 	display("Setting first vehicle now...", 5);
 
-	for (int i = 0; i < 4; i++) {
-		std::string s("setting cars..");
-		s = s + " " + std::to_string(i);
-		display(s.c_str(), 5);
-		Vector3 cam_pos = CAM::GET_CAM_COORD(camera);
-		Vector3 theta = ENTITY::GET_ENTITY_ROTATION(this->vehicle, 1);
-		float near_clip = CAM::GET_CAM_NEAR_CLIP(camera);
-		float fov = CAM::GET_CAM_FOV(camera);
+	//for (int i = 0; i < 4; i++) {
+	//	std::string s("setting cars..");
+	//	s = s + " " + std::to_string(i);
+	//	display(s.c_str(), 5);
+	//	Vector3 cam_pos = CAM::GET_CAM_COORD(camera);
+	//	Vector3 theta = ENTITY::GET_ENTITY_ROTATION(this->vehicle, 1);
+	//	float near_clip = CAM::GET_CAM_NEAR_CLIP(camera);
+	//	float fov = CAM::GET_CAM_FOV(camera);
 
-		int idx = i % 2;
-		Vehicle vehicle_temp;
-		
-		vehicleHash = GAMEPLAY::GET_HASH_KEY("slamvan");
-		STREAMING::REQUEST_MODEL(vehicleHash);
-		while (!STREAMING::HAS_MODEL_LOADED(vehicleHash)) WAIT(0);
+	//	int idx = i % 2;
+	//	Vehicle vehicle_temp;
+	//	
+	//	vehicleHash = GAMEPLAY::GET_HASH_KEY("slamvan");
+	//	STREAMING::REQUEST_MODEL(vehicleHash);
+	//	while (!STREAMING::HAS_MODEL_LOADED(vehicleHash)) WAIT(0);
 
-		Vector3 coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(this->vehicle, 0.0, 10.0 * i, 0.0);
-
-
+	//	Vector3 coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(this->vehicle, 0.0, 10.0 * i, 0.0);
 
 
-		//while (!ENTITY::DOES_ENTITY_EXIST(vehicle_temp)) {
-			vehicle_temp = VEHICLE::CREATE_VEHICLE(vehicleHash, coords.x, coords.y, coords.z, heading, TRUE, TRUE);
-			//WAIT(0);
-		//}
-		VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(vehicle_temp);
-		VEHICLE::SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(vehicle_temp, 0, 153, 0);
-		
-	}
 
-	//if (_drivingMode >= 0) AI::TASK_VEHICLE_DRIVE_WANDER(ped, vehicle, _setSpeed, _drivingMode);
+
+	//	//while (!ENTITY::DOES_ENTITY_EXIST(vehicle_temp)) {
+	//		vehicle_temp = VEHICLE::CREATE_VEHICLE(vehicleHash, coords.x, coords.y, coords.z, heading, TRUE, TRUE);
+	//		//WAIT(0);
+	//	//}
+	//	VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(vehicle_temp);
+	//	VEHICLE::SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(vehicle_temp, 0, 153, 0);
+	//	
+	//}
+
+	if (_drivingMode >= 0) AI::TASK_VEHICLE_DRIVE_WANDER(ped, vehicle, _setSpeed, _drivingMode);
 }
 
 void Scenario::clearAllVehicles(void) {
@@ -274,6 +276,7 @@ void Scenario::clearAllVehicles(void) {
 		ENTITY::SET_ENTITY_AS_MISSION_ENTITY(all_vehicles[i], true, true);
 		VEHICLE::DELETE_VEHICLE(&all_vehicles[i]);
 	}
+	all_vehicles.clear();
 }
 
 void Scenario::buildOneFormalScenario(const Value& cfg, Server *const server)
@@ -443,9 +446,6 @@ void Scenario::buildFormalScenarios(const Value& cfgs, Server *const server)
 
 
 
-
-
-
 	rapidjson::SizeType cfgs_num = cfgs.Size();
 
 	for (rapidjson::SizeType i = 0; i < cfgs_num; i++) {
@@ -562,29 +562,57 @@ void Scenario::setCommands(float throttle, float brake, float steering) {
 }
 
 StringBuffer Scenario::generateMessage() {
+	d.SetObject();
+	Document::AllocatorType& allocator = d.GetAllocator();
+	Value a(kArrayType);
+
+	d.AddMember("vehicles", a, allocator);
+	d.AddMember("lidar_pts", a, allocator);
+
 	StringBuffer buffer;
 	buffer.Clear();
 	Writer<StringBuffer> writer(buffer);
 	
 	screenCapturer->capture();
 
+	if (server->isFormalScenarios) {
+		vehicles = true;
+	}
+
 	if (vehicles) setVehiclesList();
-	if (peds) setPedsList();
-	if (trafficSigns); //TODO
-	if (direction) setDirection();
-	if (reward) setReward();
-	if (throttle) setThrottle();
-	if (brake) setBrake();
-	if (steering) setSteering();
-	if (speed) setSpeed();
-	if (yawRate) setYawRate();
-	if (drivingMode); //TODO
-	if (location) setLocation();
-	if (time) setTime();
+	//if (peds) setPedsList();
+	//if (trafficSigns); //TODO
+	//if (direction) setDirection();
+	//if (reward) setReward();
+	//if (throttle) setThrottle();
+	//if (brake) setBrake();
+	//if (steering) setSteering();
+	//if (speed) setSpeed();
+	//if (yawRate) setYawRate();
+	//if (drivingMode); //TODO
+	//if (location) setLocation();
+	//if (time) setTime();
+
+	
+
+	//Document::AllocatorType& allocator = d.GetAllocator();
+	//Value test(kArrayType);
+	//test.SetArray();
+	//test.PushBack(Value().SetDouble(999.0), allocator).PushBack(Value().SetDouble(888.0), allocator).PushBack(Value().SetDouble(777.0), allocator);
+	//debugfile << "Inside: Before setting..." << std::endl;
+	//d["another"] = test;
+	//debugfile << "Inside: After setting..." << std::endl;
+	
 
 	d.Accept(writer);
 
+	debugfile << "Inside generateMessage() : " << buffer.GetString() << std::endl;
 	return buffer;
+}
+
+void Scenario::setLidarPoints()
+{
+	;
 }
 
 void Scenario::setVehiclesList() {
@@ -603,24 +631,35 @@ void Scenario::setVehiclesList() {
 	Vector3 speedVector;
 	float heading, speed;
 	int classid;
+	Vector3 currentPos;
 
-	Vector3 currentPos = ENTITY::GET_ENTITY_COORDS(vehicle, false);
+	Entity e = PLAYER::PLAYER_PED_ID();
+	if (PED::IS_PED_IN_ANY_VEHICLE(e, 0)) {
+		vehicle = PED::GET_VEHICLE_PED_IS_USING(e);
+		currentPos = ENTITY::GET_ENTITY_COORDS(vehicle, false);
+	}
+	else 
+		currentPos = ENTITY::GET_ENTITY_COORDS(e, false);
 	Vector3 currentForwardVector = ENTITY::GET_ENTITY_FORWARD_VECTOR(vehicle);
 
 	int count = worldGetAllVehicles(vehicles, ARR_SIZE);
+	count = all_vehicles.size();
+	debugfile << "car # is : " << count << std::endl;
 	for (int i = 0; i < count; i++) {
-		if (vehicles[i] == vehicle) continue; //Don't process own car!
-		if (ENTITY::IS_ENTITY_ON_SCREEN(vehicles[i])) {
+		if (all_vehicles[i] == vehicle) continue; //Don't process own car!
+		if (ENTITY::IS_ENTITY_ON_SCREEN(all_vehicles[i])) {
+			debugfile << "get car number " << i << std::endl;
 			//Check if it is in screen
-			ENTITY::GET_ENTITY_MATRIX(vehicles[i], &rightVector, &forwardVector, &upVector, &position); //Blue or red pill
-			if (SYSTEM::VDIST2(currentPos.x, currentPos.y, currentPos.z, position.x, position.y, position.z) < 22500) { //150 m.
-				if (ENTITY::HAS_ENTITY_CLEAR_LOS_TO_ENTITY(vehicle, vehicles[i], 19)){
+			ENTITY::GET_ENTITY_MATRIX(all_vehicles[i], &rightVector, &forwardVector, &upVector, &position); //Blue or red pill
+			//if (SYSTEM::VDIST2(currentPos.x, currentPos.y, currentPos.z, position.x, position.y, position.z) < 22500) { //150 m.
+			//	if (ENTITY::HAS_ENTITY_CLEAR_LOS_TO_ENTITY(vehicle, vehicles[i], 19)){
 					//Check if we see it (not occluded)
-					model = ENTITY::GET_ENTITY_MODEL(vehicles[i]);
+					model = ENTITY::GET_ENTITY_MODEL(all_vehicles[i]);
+					debugfile << "Getting one vehicle..." << std::endl;
 					GAMEPLAY::GET_MODEL_DIMENSIONS(model, &min, &max);
 
-					speedVector = ENTITY::GET_ENTITY_SPEED_VECTOR(vehicles[i], false);
-					speed = ENTITY::GET_ENTITY_SPEED(vehicles[i]);
+					speedVector = ENTITY::GET_ENTITY_SPEED_VECTOR(all_vehicles[i], false);
+					speed = ENTITY::GET_ENTITY_SPEED(all_vehicles[i]);
 					if (speed > 0) {
 						heading = GAMEPLAY::GET_HEADING_FROM_VECTOR_2D(speedVector.x - currentForwardVector.x, speedVector.y - currentForwardVector.y);
 					}
@@ -647,13 +686,13 @@ void Scenario::setVehiclesList() {
 					FUR.x = position.x + dim.y*rightVector.x + dim.x*forwardVector.x + dim.z*upVector.x;
 					FUR.y = position.y + dim.y*rightVector.y + dim.x*forwardVector.y + dim.z*upVector.y;
 					FUR.z = position.z + dim.y*rightVector.z + dim.x*forwardVector.z + dim.z*upVector.z;
-					//GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(FUR.x, FUR.y, FUR.z, &(FUR.z), 0);
-					//FUR.z += 2 * dim.z;
+					GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(FUR.x, FUR.y, FUR.z, &(FUR.z), 0);
+					FUR.z += 2 * dim.z;
 
 					BLL.x = position.x - dim.y*rightVector.x - dim.x*forwardVector.x - dim.z*upVector.x;
 					BLL.y = position.y - dim.y*rightVector.y - dim.x*forwardVector.y - dim.z*upVector.y;
 					BLL.z = position.z - dim.y*rightVector.z - dim.x*forwardVector.z - dim.z*upVector.z;
-					//GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(BLL.x, BLL.y, 1000.0, &(BLL.z), 0);
+					GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(BLL.x, BLL.y, 1000.0, &(BLL.z), 0);
 
 					Value _vehicle(kObjectType);
 
@@ -664,9 +703,11 @@ void Scenario::setVehiclesList() {
 					_vector.PushBack(BLL.x - currentPos.x, allocator).PushBack(BLL.y - currentPos.y, allocator).PushBack(BLL.z - currentPos.z, allocator);
 					_vehicle.AddMember("BLL", _vector, allocator).AddMember("speed", speed, allocator).AddMember("heading", heading, allocator).AddMember("classID", classid, allocator);
 
-					_vehicles.PushBack(_vehicle, allocator);
+					
 
-					#ifdef DEBUG
+					float screen_x, screen_y;
+					_vector.SetArray();
+
 					Vector3 edge1 = BLL;
 					Vector3 edge2;
 					Vector3 edge3;
@@ -676,51 +717,75 @@ void Scenario::setVehiclesList() {
 					Vector3 edge7;
 					Vector3 edge8;
 
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge1.x, edge1.y, edge1.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
+
 					edge2.x = edge1.x + 2 * dim.y*rightVector.x;
 					edge2.y = edge1.y + 2 * dim.y*rightVector.y;
 					edge2.z = edge1.z + 2 * dim.y*rightVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge2.x, edge2.y, edge2.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 					edge3.x = edge2.x + 2 * dim.z*upVector.x;
 					edge3.y = edge2.y + 2 * dim.z*upVector.y;
 					edge3.z = edge2.z + 2 * dim.z*upVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge3.x, edge3.y, edge3.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 					edge4.x = edge1.x + 2 * dim.z*upVector.x;
 					edge4.y = edge1.y + 2 * dim.z*upVector.y;
 					edge4.z = edge1.z + 2 * dim.z*upVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge4.x, edge4.y, edge4.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge5.x, edge5.y, edge5.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 					edge6.x = edge5.x - 2 * dim.y*rightVector.x;
 					edge6.y = edge5.y - 2 * dim.y*rightVector.y;
 					edge6.z = edge5.z - 2 * dim.y*rightVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge6.x, edge6.y, edge6.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 					edge7.x = edge6.x - 2 * dim.z*upVector.x;
 					edge7.y = edge6.y - 2 * dim.z*upVector.y;
 					edge7.z = edge6.z - 2 * dim.z*upVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge7.x, edge7.y, edge7.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 					edge8.x = edge5.x - 2 * dim.z*upVector.x;
 					edge8.y = edge5.y - 2 * dim.z*upVector.y;
 					edge8.z = edge5.z - 2 * dim.z*upVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge8.x, edge8.y, edge8.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
-					GRAPHICS::DRAW_LINE(edge1.x, edge1.y, edge1.z, edge2.x, edge2.y, edge2.z, 0, 255, 0, 200);
-					GRAPHICS::DRAW_LINE(edge1.x, edge1.y, edge1.z, edge4.x, edge4.y, edge4.z, 0, 255, 0, 200);
-					GRAPHICS::DRAW_LINE(edge2.x, edge2.y, edge2.z, edge3.x, edge3.y, edge3.z, 0, 255, 0, 200);
-					GRAPHICS::DRAW_LINE(edge3.x, edge3.y, edge3.z, edge4.x, edge4.y, edge4.z, 0, 255, 0, 200);
 
-					GRAPHICS::DRAW_LINE(edge5.x, edge5.y, edge5.z, edge6.x, edge6.y, edge6.z, 0, 255, 0, 200);
-					GRAPHICS::DRAW_LINE(edge5.x, edge5.y, edge5.z, edge8.x, edge8.y, edge8.z, 0, 255, 0, 200);
-					GRAPHICS::DRAW_LINE(edge6.x, edge6.y, edge6.z, edge7.x, edge7.y, edge7.z, 0, 255, 0, 200);
-					GRAPHICS::DRAW_LINE(edge7.x, edge7.y, edge7.z, edge8.x, edge8.y, edge8.z, 0, 255, 0, 200);
+					_vehicle.AddMember("coords_2d", _vector, allocator);
+					_vehicles.PushBack(_vehicle, allocator);
 
-					GRAPHICS::DRAW_LINE(edge1.x, edge1.y, edge1.z, edge7.x, edge7.y, edge7.z, 0, 255, 0, 200);
-					GRAPHICS::DRAW_LINE(edge2.x, edge2.y, edge2.z, edge8.x, edge8.y, edge8.z, 0, 255, 0, 200);
-					GRAPHICS::DRAW_LINE(edge3.x, edge3.y, edge3.z, edge5.x, edge5.y, edge5.z, 0, 255, 0, 200);
-					GRAPHICS::DRAW_LINE(edge4.x, edge4.y, edge4.z, edge6.x, edge6.y, edge6.z, 0, 255, 0, 200);
-					#endif
+					//#ifdef DEBUG
+					//for (int i = 0; i < 10000; i++) {
+					//	GRAPHICS::DRAW_LINE(edge1.x, edge1.y, edge1.z, edge2.x, edge2.y, edge2.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge1.x, edge1.y, edge1.z, edge4.x, edge4.y, edge4.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge2.x, edge2.y, edge2.z, edge3.x, edge3.y, edge3.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge3.x, edge3.y, edge3.z, edge4.x, edge4.y, edge4.z, 0, 255, 0, 200);
 
-				}
-			}
+					//	GRAPHICS::DRAW_LINE(edge5.x, edge5.y, edge5.z, edge6.x, edge6.y, edge6.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge5.x, edge5.y, edge5.z, edge8.x, edge8.y, edge8.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge6.x, edge6.y, edge6.z, edge7.x, edge7.y, edge7.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge7.x, edge7.y, edge7.z, edge8.x, edge8.y, edge8.z, 0, 255, 0, 200);
+
+					//	GRAPHICS::DRAW_LINE(edge1.x, edge1.y, edge1.z, edge7.x, edge7.y, edge7.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge2.x, edge2.y, edge2.z, edge8.x, edge8.y, edge8.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge3.x, edge3.y, edge3.z, edge5.x, edge5.y, edge5.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge4.x, edge4.y, edge4.z, edge6.x, edge6.y, edge6.z, 0, 255, 0, 200);
+					//}
+					//#endif
+					
+				//}
+			//}
 		}
 	}
-			
+
 	d["vehicles"] = _vehicles;
 }
 
@@ -844,7 +909,6 @@ void Scenario::setPedsList(){
 					GRAPHICS::DRAW_LINE(edge3.x, edge3.y, edge3.z, edge5.x, edge5.y, edge5.z, 255, 0, 0, 200);
 					GRAPHICS::DRAW_LINE(edge4.x, edge4.y, edge4.z, edge6.x, edge6.y, edge6.z, 255, 0, 0, 200);
 					#endif
-
 				}
 			}
 		}

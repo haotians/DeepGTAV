@@ -42,6 +42,7 @@ Server::Server(unsigned int port) {
 	if (ioctlsocket(ServerSocket, FIONBIO, &iMode) != NO_ERROR) {
 		printf("Server ioctlsocket failed");
 	}
+	scenario.server = this;
 
 }
 
@@ -66,26 +67,21 @@ void Server::checkRecvMessage() {
 	int error;
 	
 	if (recvMessageLen == 0) {
-		debugfile << "Before receive..." << std::endl;
 		recv(ClientSocket, (char*)&recvMessageLen, 4, 0); //Receive message len first
-		debugfile << "After receive..." << std::endl;
 
 		error = WSAGetLastError();
-		debugfile << "A" << std::endl;
 		if (error == WSAEWOULDBLOCK) return;
-		debugfile << "B" << std::endl;
 		if (error != 0) {
-			debugfile << "C" << std::endl;
 			printf("\nError receiving message length: %d", error);
 			resetState();
 			return;
 		}
 	}
-	debugfile << "D" << std::endl;
+
 	while (bytesRead < recvMessageLen){
-		debugfile << "E" << std::endl;
+
 		result = recv(ClientSocket, json + bytesRead, recvMessageLen - bytesRead, 0);
-		debugfile << "F" << std::endl;
+
 		error = WSAGetLastError();
 		if (error == WSAEWOULDBLOCK) return;
 		if (error != 0 || result < 1) {
@@ -147,31 +143,42 @@ void Server::checkSendMessage() {
 	int error;
 	int r;
 	
-	if (isFormalScenarios) {
-		debugfile << "Capturing ..." << std::endl;
-		wait(10);
-		scenario.screenCapturer->capture();
-		//wait(10);
-	}
+	//if (isFormalScenarios) {
+	//	debugfile << "Capturing ..." << std::endl;
+	//	wait(10);
+	//	scenario.screenCapturer->capture();
+	//	//wait(10);
+	//}
 
 	if (isFormalScenarios || (sendOutputs && (((float)(std::clock() - lastSentMessage) / CLOCKS_PER_SEC) > (1.0 / scenario.rate)))) {
-		//if (messageSize == 0) {
-		//	message = scenario.generateMessage();
-		//	chmessage = message.GetString();
-		//	messageSize = message.GetSize();
-		//}
+		if (messageSize == 0) {			
+			message = scenario.generateMessage();
+			chmessage = message.GetString();
+			messageSize = message.GetSize();
+			debugfile << "message size is .." << messageSize << std::endl;
+			debugfile << "The message is .." << chmessage << std::endl;
+		}
 
+		debugfile << "AA" << std::endl;
 		if (!frameSent) {
+			debugfile << "BB" << std::endl;
+
 			if (!readyToSend) {
-				debugfile << "Sending ..." << std::endl;
+				debugfile << "CC" << std::endl;
+				debugfile << "Sending frame..." << std::endl;
 				send(ClientSocket, (const char*)&scenario.screenCapturer->length, sizeof(scenario.screenCapturer->length), 0);
 				error = WSAGetLastError();
+				debugfile << "DD" << std::endl;
 				if (error == WSAEWOULDBLOCK) return;
+				debugfile << "EE" << std::endl;
+
 				if (error != 0) {
 					printf("\nError sending frame length: %d", error);
 					resetState();
 					return;
 				}
+				
+				debugfile << "FF" << std::endl;
 				readyToSend = true;
 				sendMessageLen = 0;
 			}
@@ -187,13 +194,15 @@ void Server::checkSendMessage() {
 				}
 				sendMessageLen = sendMessageLen + r;
 			}
+			debugfile << "GG" << std::endl;
 			readyToSend = false;
 			frameSent = true;
 		}
-
+		debugfile << "HH" << std::endl;
 		if (frameSent) {
+			debugfile << "II" << std::endl;
 			if (!readyToSend) {
-				/*
+				debugfile << "JJ" << std::endl;
 				send(ClientSocket, (const char*)&messageSize, sizeof(messageSize), 0);
 				error = WSAGetLastError();
 				if (error == WSAEWOULDBLOCK) return;
@@ -201,22 +210,32 @@ void Server::checkSendMessage() {
 					printf("\nError sending message length: %d", error);
 					resetState();
 					return;
-				}*/
+				}
+				debugfile << "KK" << std::endl;
 				readyToSend = true;
 				sendMessageLen = 0;
 			}
 
-			//while (readyToSend && (sendMessageLen < messageSize)) {
-			//	r = send(ClientSocket, (const char*)(chmessage + sendMessageLen), messageSize - sendMessageLen, 0);
-			//	error = WSAGetLastError();
-			//	if (error == WSAEWOULDBLOCK) return;
-			//	if (error != 0 || r <= 1) {
-			//		printf("\nError sending message: %d", error);
-			//		resetState();
-			//		return;
-			//	}
-			//	sendMessageLen = sendMessageLen + r;
-			//}
+			while (readyToSend && (sendMessageLen < messageSize)) {
+				debugfile << "LL" << std::endl;
+				debugfile << chmessage << std::endl;
+				do {
+					debugfile << "AAA" << std::endl;
+					r = send(ClientSocket, (const char*)(chmessage + sendMessageLen), messageSize - sendMessageLen, 0);
+					debugfile << "MM" << std::endl;
+					error = WSAGetLastError();
+					debugfile << "OO" << std::endl;				
+				} while (error == WSAEWOULDBLOCK);
+				//if (error == WSAEWOULDBLOCK) return;
+				debugfile << "PP" << std::endl;
+				if (error != 0 || r <= 1) {
+					printf("\nError sending message: %d", error);
+					resetState();
+					return;
+				}
+				debugfile << "NN" << std::endl;
+				sendMessageLen = sendMessageLen + r;
+			}
 			readyToSend = false;
 			messageSize = 0;
 			frameSent = false;
