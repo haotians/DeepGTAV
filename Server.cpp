@@ -117,6 +117,14 @@ void Server::checkRecvMessage() {
 		sendOutputs = false;
 		scenario.stop();
 	}
+	else if (d.HasMember("formal_configs")) {
+		const Value& cfgs = d["formal_configs"];
+
+		scenario.screenCapturer = new ScreenCapturer(1920, 1200);
+		isFormalScenarios = true;
+		scenario.buildFormalScenarios(cfgs, this);
+		isFormalScenarios = false;
+	}
 	else {
 		return; //Invalid message
 	}

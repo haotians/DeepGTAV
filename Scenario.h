@@ -15,7 +15,7 @@
 using namespace rapidjson;
 
 //#define DEBUG 1
-
+class Server;
 class Scenario {
 private:
 	static char* weatherList[14];
@@ -68,6 +68,8 @@ public:
 	void setCommands(float throttle, float brake, float steering);
 	void run();
 
+	void buildFormalScenarios(const Value& v, Server *s);
+	void Scenario::buildOneFormalScenario(const Value & cfg, Server * s);
 	ScreenCapturer* screenCapturer;
 	StringBuffer generateMessage();
 
@@ -76,6 +78,7 @@ private:
 	void parseDatasetConfig(const Value& dc, bool setDefaults);
 	void buildScenario();
 
+	void setPlayerIntoVehicle();
 	void setVehiclesList();
 	void setPedsList();
 	void setTrafficSignsList();

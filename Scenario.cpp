@@ -6,9 +6,12 @@
 #include "Rewarders\SpeedRewarder.h"
 #include "defaults.h"
 #include <time.h>
+#include <iostream>
+#include <fstream>
 
 char* Scenario::weatherList[14] = { "CLEAR", "EXTRASUNNY", "CLOUDS", "OVERCAST", "RAIN", "CLEARING", "THUNDER", "SMOG", "FOGGY", "XMAS", "SNOWLIGHT", "BLIZZARD", "NEUTRAL", "SNOW" };
 char* Scenario::vehicleList[3] = { "blista", "voltic", "packer" };
+extern std::ofstream debugfile("debug.txt", std::ofstream::out | std::ofstream::app);
 
 void Scenario::parseScenarioConfig(const Value& sc, bool setDefaults) {
 	const Value& location = sc["location"];
@@ -285,6 +288,20 @@ void Scenario::setCommands(float throttle, float brake, float steering) {
 	currentBrake = brake;
 	currentSteering = steering;
 }
+void Scenario::buildOneFormalScenario(const Value & cfg, Server * server) {
+
+}
+void Scenario::buildFormalScenarios(const Value & cfgs, Server * server)
+{
+	setPlayerIntoVehicle();
+	rapidjson::SizeType cfgs_num = cfgs.Size();
+
+	for (rapidjson::SizeType i = 0; i < cfgs_num; i++) {
+		debugfile << "Processing Scenario : " << i << std::endl;
+		buildOneFormalScenario(cfgs[i], server);
+		//std::this_thread::sleep_for(std::chrono::seconds(10));
+	}
+}
 
 StringBuffer Scenario::generateMessage() {
 	StringBuffer buffer;
@@ -310,6 +327,58 @@ StringBuffer Scenario::generateMessage() {
 	d.Accept(writer);
 
 	return buffer;
+}
+
+void Scenario::setPlayerIntoVehicle()
+{
+	Vector3 pos, rotation, pos_player;
+	Hash vehicleHash;
+	float heading;
+
+	GAMEPLAY::SET_RANDOM_SEED(std::time(NULL));
+	while (!PATHFIND::LOAD_ALL_PATH_NODES(TRUE)) WAIT(0);
+
+	pos_player = ENTITY::GET_ENTITY_COORDS(PLAYER::PLAYER_PED_ID(), 1);
+	PATHFIND::GET_CLOSEST_VEHICLE_NODE_WITH_HEADING(pos_player.x, pos_player.y, 0, &pos, &heading, 0, 0, 0);
+	PATHFIND::LOAD_ALL_PATH_NODES(FALSE);
+
+	ENTITY::DELETE_ENTITY(&vehicle);
+	vehicleHash = GAMEPLAY::GET_HASH_KEY("voltic");
+	STREAMING::REQUEST_MODEL(vehicleHash);
+	while (!STREAMING::HAS_MODEL_LOADED(vehicleHash)) WAIT(0);
+	while (!ENTITY::DOES_ENTITY_EXIST(vehicle)) {
+		vehicle = VEHICLE::CREATE_VEHICLE(vehicleHash, pos.x, pos.y, pos.z, heading, FALSE, FALSE);
+		WAIT(0);
+	}
+	VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(vehicle);
+
+	while (!ENTITY::DOES_ENTITY_EXIST(ped)) {
+		ped = PLAYER::PLAYER_PED_ID();
+		WAIT(0);
+	}
+
+	player = PLAYER::PLAYER_ID();
+	PLAYER::START_PLAYER_TELEPORT(player, pos.x, pos.y, pos.z, heading, 0, 0, 0);
+	while (PLAYER::IS_PLAYER_TELEPORT_ACTIVE()) WAIT(0);
+
+	PED::SET_PED_INTO_VEHICLE(ped, vehicle, -1);
+	STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(vehicleHash);
+
+	TIME::SET_CLOCK_TIME(12, 12, 0);
+
+	GAMEPLAY::SET_WEATHER_TYPE_NOW_PERSIST("EXTRASUNNY");
+
+	rotation = ENTITY::GET_ENTITY_ROTATION(vehicle, 1);
+	CAM::DESTROY_ALL_CAMS(TRUE);
+	camera = CAM::CREATE_CAM("DEFAULT_SCRIPTED_CAMERA", TRUE);
+	if (strcmp(_vehicle, "packer") == 0) CAM::ATTACH_CAM_TO_ENTITY(camera, vehicle, 0, 2.35, 1.7, TRUE);
+	else CAM::ATTACH_CAM_TO_ENTITY(camera, vehicle, 0, 0.5, 0.8, TRUE);
+	CAM::SET_CAM_FOV(camera, 60);
+	CAM::SET_CAM_ACTIVE(camera, TRUE);
+	CAM::SET_CAM_ROT(camera, rotation.x, rotation.y, rotation.z, 1);
+	CAM::SET_CAM_INHERIT_ROLL_VEHICLE(camera, TRUE);
+	CAM::RENDER_SCRIPT_CAMS(TRUE, FALSE, 0, TRUE, TRUE);
+
 }
 
 void Scenario::setVehiclesList() {
