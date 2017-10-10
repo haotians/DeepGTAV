@@ -268,7 +268,7 @@ void Scenario::buildScenario() {
 	//	
 	//}
 
-	if (_drivingMode >= 0) AI::TASK_VEHICLE_DRIVE_WANDER(ped, vehicle, _setSpeed, _drivingMode);
+	//if (_drivingMode >= 0) AI::TASK_VEHICLE_DRIVE_WANDER(ped, vehicle, _setSpeed, _drivingMode);
 }
 
 void Scenario::clearAllVehicles(void) {
@@ -293,7 +293,7 @@ void Scenario::buildOneFormalScenario(const Value& cfg, Server *const server)
 	pos.y = cfg["location"][1].GetFloat();
 	pos.z = cfg["location"][2].GetFloat(); //Probably need to get the gound height
 
-	//GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(pos.x, pos.y, pos.z, &(pos.z), 0);
+	GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(pos.x, pos.y, pos.z, &(pos.z), 0);
 
 	hour = cfg["time"][0].GetInt();
 	min  = cfg["time"][1].GetInt();
@@ -326,7 +326,7 @@ void Scenario::buildOneFormalScenario(const Value& cfg, Server *const server)
 
 	ENTITY::SET_ENTITY_HEADING(e, heading);
 	ENTITY::SET_ENTITY_COORDS_NO_OFFSET(e, pos.x, pos.y, pos.z, 0, 0, 1);
-
+	OBJECT::PLACE_OBJECT_ON_GROUND_PROPERLY(e);
 	WAIT(0);
 
 	
@@ -405,7 +405,7 @@ void Scenario::buildOneFormalScenario(const Value& cfg, Server *const server)
 
 	}
 
-	WAIT(3000);
+	WAIT(10000);
 	server->checkSendMessage();
 
 }
@@ -444,7 +444,13 @@ void Scenario::buildFormalScenarios(const Value& cfgs, Server *const server)
 	//PED::SET_PED_INTO_VEHICLE(ped, vehicle, -1);
 	//STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(vehicleHash);
 
-
+	_vehicle = "blista";
+	x = cfgs[0]["location"][0].GetFloat();
+	y = cfgs[0]["location"][1].GetFloat();
+	hour = 12;
+	minute = 12;
+	_weather = "EXTRASUNNY";
+	//buildScenario();
 
 	rapidjson::SizeType cfgs_num = cfgs.Size();
 
