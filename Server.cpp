@@ -3,9 +3,10 @@
 #include "lib/rapidjson/document.h"
 #include "lib/rapidjson/stringbuffer.h"
 #include "lib/main.h"
-
+#include <iostream>
+#include <fstream>
 using namespace rapidjson;
-
+extern std::ofstream debugfile;
 Server::Server(unsigned int port) {
 	struct sockaddr_in server;
 	freopen("deepgtav.log", "w", stdout);
@@ -121,9 +122,9 @@ void Server::checkRecvMessage() {
 		const Value& cfgs = d["formal_configs"];
 
 		scenario.screenCapturer = new ScreenCapturer(1920, 1200);
-		isFormalScenarios = true;
+		scenario.isFormalScenarios = true;
 		scenario.buildFormalScenarios(cfgs, this);
-		isFormalScenarios = false;
+		scenario.isFormalScenarios = false;
 	}
 	else {
 		return; //Invalid message
@@ -134,32 +135,44 @@ void Server::checkRecvMessage() {
 void Server::checkSendMessage() {
 	int error;
 	int r;
-
-	if (sendOutputs && (((float)(std::clock() - lastSentMessage) / CLOCKS_PER_SEC) > (1.0 / scenario.rate))) {
+	debugfile << "Inside checkSendMessage()" << std::endl;
+	if (scenario.isFormalScenarios || (sendOutputs && (((float)(std::clock() - lastSentMessage) / CLOCKS_PER_SEC) > (1.0 / scenario.rate)))) {
+		debugfile << "AA" << std::endl;
 		if (messageSize == 0) {
-			message = scenario.generateMessage();
+			debugfile << "BB" << std::endl;
+			message = scenario.generateMessageFormal();
 			chmessage = message.GetString();
 			messageSize = message.GetSize();
+			debugfile << "message size is .." << messageSize << std::endl;
+			debugfile << "The message is .." << chmessage << std::endl;
 		}		
 
 		if (!frameSent) {
+			debugfile << "CC" << std::endl;
 			if (!readyToSend) {
+				debugfile << "DD" << std::endl;
 				send(ClientSocket, (const char*)&scenario.screenCapturer->length, sizeof(scenario.screenCapturer->length), 0);
 				error = WSAGetLastError();
+				debugfile << "EE" << std::endl;
 				if (error == WSAEWOULDBLOCK) return;
+				debugfile << "FF" << std::endl;
 				if (error != 0) {
 					printf("\nError sending frame length: %d", error);
 					resetState();
 					return;
 				}
+				debugfile << "GG" << std::endl;
 				readyToSend = true;
 				sendMessageLen = 0;
 			}
 
 			while (readyToSend && (sendMessageLen < scenario.screenCapturer->length)) {
+				debugfile << "HH" << std::endl;
 				r = send(ClientSocket, (const char*)(scenario.screenCapturer->pixels + sendMessageLen), scenario.screenCapturer->length - sendMessageLen, 0);
 				error = WSAGetLastError();
+				debugfile << "II" << std::endl;
 				if (error == WSAEWOULDBLOCK) return;
+				debugfile << "JJ" << std::endl;
 				if (error != 0 || r <= 1) {
 					printf("\nError sending frame: %d", error);
 					resetState();
@@ -167,35 +180,46 @@ void Server::checkSendMessage() {
 				}
 				sendMessageLen = sendMessageLen + r;
 			}
+			debugfile << "KK" << std::endl;
 			readyToSend = false;
 			frameSent = true;
 		}
 
 		if (frameSent) {
+			debugfile << "LL" << std::endl;
 			if (!readyToSend) {
+				debugfile << "MM" << std::endl;
 				send(ClientSocket, (const char*)&messageSize, sizeof(messageSize), 0);
 				error = WSAGetLastError();
+				debugfile << "NN" << std::endl;
 				if (error == WSAEWOULDBLOCK) return;
+				debugfile << "OO" << std::endl;
 				if (error != 0) {
 					printf("\nError sending message length: %d", error);
 					resetState();
 					return;
 				}
+				debugfile << "PP" << std::endl;
 				readyToSend = true;
 				sendMessageLen = 0;
 			}
 
 			while (readyToSend && (sendMessageLen < messageSize)) {
+				debugfile << "QQ" << std::endl;
 				r = send(ClientSocket, (const char*)(chmessage + sendMessageLen), messageSize - sendMessageLen, 0);
 				error = WSAGetLastError();
+				debugfile << "RR" << std::endl;
 				if (error == WSAEWOULDBLOCK) return;
+				debugfile << "SS" << std::endl;
 				if (error != 0 || r <= 1) {
 					printf("\nError sending message: %d", error);
 					resetState();
 					return;
 				}
+				debugfile << "TT" << std::endl;
 				sendMessageLen = sendMessageLen + r;
 			}
+			debugfile << "UU" << std::endl;
 			readyToSend = false;
 			messageSize = 0;
 			frameSent = false;

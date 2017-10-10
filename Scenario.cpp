@@ -8,11 +8,15 @@
 #include <time.h>
 #include <iostream>
 #include <fstream>
+#include "server.h"
 
 char* Scenario::weatherList[14] = { "CLEAR", "EXTRASUNNY", "CLOUDS", "OVERCAST", "RAIN", "CLEARING", "THUNDER", "SMOG", "FOGGY", "XMAS", "SNOWLIGHT", "BLIZZARD", "NEUTRAL", "SNOW" };
 char* Scenario::vehicleList[3] = { "blista", "voltic", "packer" };
 extern std::ofstream debugfile("debug.txt", std::ofstream::out | std::ofstream::app);
 
+std::vector<Vehicle> all_vehicles;
+//class Server;
+#define DEBUG 1
 void Scenario::parseScenarioConfig(const Value& sc, bool setDefaults) {
 	const Value& location = sc["location"];
 	const Value& time = sc["time"];
@@ -288,12 +292,147 @@ void Scenario::setCommands(float throttle, float brake, float steering) {
 	currentBrake = brake;
 	currentSteering = steering;
 }
-void Scenario::buildOneFormalScenario(const Value & cfg, Server * server) {
+
+void Scenario::clearAllVehicles(void) {
+	for (int i = 0; i < all_vehicles.size(); i++) {
+		ENTITY::SET_ENTITY_AS_MISSION_ENTITY(all_vehicles[i], true, true);
+		VEHICLE::DELETE_VEHICLE(&all_vehicles[i]);
+	}
+	all_vehicles.clear();
+}
+
+void Scenario::buildOneFormalScenario(const Value & cfg, Server *const server) {
+	clearAllVehicles();
+	Vector3 pos, rotation;
+	Hash vehicleHash;
+	float heading;
+	int hour, minute;
+	rapidjson::SizeType vehicle_num = cfg["vehicles"].Size();
+	const Value& vehicles = cfg["vehicles"];
+
+	pos.x = cfg["location"][0].GetFloat();
+	pos.y = cfg["location"][1].GetFloat();
+	pos.z = cfg["location"][2].GetFloat(); //Probably need to get the gound height
+
+										   //GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(pos.x, pos.y, pos.z, &(pos.z), 0);
+
+	hour = cfg["time"][0].GetInt();
+	minute = cfg["time"][1].GetInt();
+
+	_weather = cfg["weather"].GetString();
+
+	heading = cfg["view_heading"].GetFloat();
+
+	//GAMEPLAY::SET_RANDOM_SEED(std::time(NULL)); // FIXME
+
+	//while (!PATHFIND::LOAD_ALL_PATH_NODES(TRUE)) WAIT(0);
+	//PATHFIND::GET_CLOSEST_VEHICLE_NODE_WITH_HEADING(x, y, 0, &pos, &heading, 0, 0, 0);
+	//PATHFIND::LOAD_ALL_PATH_NODES(FALSE);
+
+	//ENTITY::DELETE_ENTITY(&vehicle);
+	//_vehicle = "voltic";
+	//vehicleHash = GAMEPLAY::GET_HASH_KEY((char*)_vehicle);
+	//STREAMING::REQUEST_MODEL(vehicleHash);
+	//while (!STREAMING::HAS_MODEL_LOADED(vehicleHash)) WAIT(0);
+	//while (!ENTITY::DOES_ENTITY_EXIST(vehicle)) {
+	//	vehicle = VEHICLE::CREATE_VEHICLE(vehicleHash, pos.x, pos.y, pos.z, heading, FALSE, FALSE);
+	//	WAIT(0);
+	//}
+	//VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(vehicle);
+
+	// get entity to teleport
+	Entity e = PLAYER::PLAYER_PED_ID();
+	if (PED::IS_PED_IN_ANY_VEHICLE(e, 0))
+		e = PED::GET_VEHICLE_PED_IS_USING(e);
+
+	ENTITY::SET_ENTITY_HEADING(e, heading);
+	ENTITY::SET_ENTITY_COORDS_NO_OFFSET(e, pos.x, pos.y, pos.z, 0, 0, 1);
+
+	WAIT(0);
+
+
+
+	//while (!ENTITY::DOES_ENTITY_EXIST(ped)) {
+	//	ped = PLAYER::PLAYER_PED_ID();
+	//	WAIT(0);
+	//}
+
+	//player = PLAYER::PLAYER_ID();
+	//PLAYER::START_PLAYER_TELEPORT(player, pos.x, pos.y, pos.z, heading, 0, 0, 0);
+	//while (PLAYER::IS_PLAYER_TELEPORT_ACTIVE()) WAIT(0);
+
+	//PED::SET_PED_INTO_VEHICLE(ped, vehicle, -1);
+	//STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(vehicleHash);
+
+	TIME::SET_CLOCK_TIME(hour, minute, 0);
+
+	GAMEPLAY::SET_WEATHER_TYPE_NOW_PERSIST((char*)_weather);
+
+	//rotation = ENTITY::GET_ENTITY_ROTATION(vehicle, 1);
+	//CAM::DESTROY_ALL_CAMS(TRUE);
+	//camera = CAM::CREATE_CAM("DEFAULT_SCRIPTED_CAMERA", TRUE);
+	//if (strcmp(_vehicle, "packer") == 0) CAM::ATTACH_CAM_TO_ENTITY(camera, vehicle, 0, 2.35, 1.7, TRUE);
+	//else CAM::ATTACH_CAM_TO_ENTITY(camera, vehicle, 0, 0.5, 0.8, TRUE);
+	//CAM::SET_CAM_FOV(camera, 60);
+	//CAM::SET_CAM_ACTIVE(camera, TRUE);
+	//CAM::SET_CAM_ROT(camera, rotation.x, rotation.y, rotation.z, 1);
+	//CAM::SET_CAM_INHERIT_ROLL_VEHICLE(camera, TRUE);
+	//CAM::RENDER_SCRIPT_CAMS(TRUE, FALSE, 0, TRUE, TRUE);
+
+
+	//AI::CLEAR_PED_TASKS(ped);
+
+	for (rapidjson::SizeType i = 0; i < vehicle_num; i++) {
+		const Value& v = vehicles[i];
+		//std::string model = std::string(v["model"].GetString());
+		float loc_offset_x = v["location_offset"][0].GetFloat();
+		float loc_offset_y = v["location_offset"][1].GetFloat();
+		float loc_offset_z = v["location_offset"][2].GetFloat();
+		float heading_diff = v["heading"].GetFloat();
+		int r = v["color"][0].GetInt();
+		int g = v["color"][1].GetInt();
+		int b = v["color"][2].GetInt();
+
+		debugfile << "Vehicle " << i << std::endl;
+		debugfile << "location_offset is : " << loc_offset_x << ", " << loc_offset_y << ", " << loc_offset_z << std::endl;
+		debugfile << "heading is : " << heading << std::endl;
+		debugfile << "color is : " << r << ", " << g << ", " << b << std::endl;
+
+
+		char model[20];
+		strcpy(model, v["model"].GetString());
+
+		vehicleHash = GAMEPLAY::GET_HASH_KEY(model);
+		debugfile << "The car model is : " << model << std::endl;
+
+		if (STREAMING::IS_MODEL_IN_CDIMAGE(vehicleHash) && STREAMING::IS_MODEL_A_VEHICLE(vehicleHash)) {
+			STREAMING::REQUEST_MODEL(vehicleHash);
+			while (!STREAMING::HAS_MODEL_LOADED(vehicleHash)) WAIT(0);
+
+			Vector3 coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(PLAYER::PLAYER_PED_ID(), loc_offset_x, loc_offset_y, loc_offset_z);
+
+			//GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(coords.x, coords.y, coords.z, &(coords.z), 0);
+
+			Vehicle vehicle_temp = VEHICLE::CREATE_VEHICLE(vehicleHash, coords.x, coords.y, coords.z, 0.0, TRUE, TRUE);
+			all_vehicles.push_back(vehicle_temp);
+			VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(vehicle_temp);
+			VEHICLE::SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(vehicle_temp, r, g, b);
+			ENTITY::SET_ENTITY_HEADING(vehicle_temp, heading + heading_diff);
+			WAIT(0);
+			STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(vehicleHash);
+		}
+		else
+			debugfile << "The model doesn't exist!!" << std::endl;
+
+	}
+
+	WAIT(5000);
+	server->checkSendMessage();
 
 }
-void Scenario::buildFormalScenarios(const Value & cfgs, Server * server)
+void Scenario::buildFormalScenarios(const Value & cfgs, Server *const server)
 {
-	setPlayerIntoVehicle();
+	//setPlayerIntoVehicle();
 	rapidjson::SizeType cfgs_num = cfgs.Size();
 
 	for (rapidjson::SizeType i = 0; i < cfgs_num; i++) {
@@ -323,6 +462,42 @@ StringBuffer Scenario::generateMessage() {
 	if (drivingMode); //TODO
 	if (location) setLocation();
 	if (time) setTime();
+
+	d.Accept(writer);
+
+	return buffer;
+}
+
+StringBuffer Scenario::generateMessageFormal() {
+
+	d.SetObject();
+	Document::AllocatorType& allocator = d.GetAllocator();
+	Value a(kArrayType);
+
+	d.AddMember("vehicles", a, allocator);
+	d.AddMember("lidar_pts", a, allocator);
+
+	StringBuffer buffer;
+	buffer.Clear();
+	Writer<StringBuffer> writer(buffer);
+
+	screenCapturer->capture();
+	vehicles = true;
+
+
+	if (vehicles) setVehiclesListFormal();
+	//if (peds) setPedsList();
+	//if (trafficSigns); //TODO
+	//if (direction) setDirection();
+	//if (reward) setReward();
+	//if (throttle) setThrottle();
+	//if (brake) setBrake();
+	//if (steering) setSteering();
+	//if (speed) setSpeed();
+	//if (yawRate) setYawRate();
+	//if (drivingMode); //TODO
+	//if (location) setLocation();
+	//if (time) setTime();
 
 	d.Accept(writer);
 
@@ -380,7 +555,177 @@ void Scenario::setPlayerIntoVehicle()
 	CAM::RENDER_SCRIPT_CAMS(TRUE, FALSE, 0, TRUE, TRUE);
 
 }
+void Scenario::setVehiclesListFormal() {
+	const int ARR_SIZE = 1024;
+	Vehicle vehicles[ARR_SIZE];
+	Value _vehicles(kArrayType);
+	Document::AllocatorType& allocator = d.GetAllocator();
 
+	Vector3 FUR; //Front Upper Right
+	Vector3 BLL; //Back Lower Lelft
+	Vector3 dim; //Vehicle dimensions
+	Vector3 upVector, rightVector, forwardVector, position; //Vehicle position
+	Hash model;
+	Vector3 min;
+	Vector3 max;
+	Vector3 speedVector;
+	float heading, speed;
+	int classid;
+
+	Vector3 currentPos;
+
+	Entity e = PLAYER::PLAYER_PED_ID();
+	if (PED::IS_PED_IN_ANY_VEHICLE(e, 0)) {
+		vehicle = PED::GET_VEHICLE_PED_IS_USING(e);
+		currentPos = ENTITY::GET_ENTITY_COORDS(vehicle, false);
+	}
+	else
+		currentPos = ENTITY::GET_ENTITY_COORDS(e, false);
+	Vector3 currentForwardVector = ENTITY::GET_ENTITY_FORWARD_VECTOR(vehicle);
+
+	int count = worldGetAllVehicles(vehicles, ARR_SIZE);
+
+	count = all_vehicles.size();
+	for (int i = 0; i < count; i++) {
+		if (all_vehicles[i] == vehicle) continue; //Don't process own car!
+		//if (ENTITY::IS_ENTITY_ON_SCREEN(vehicles[i])) {
+			//Check if it is in screen
+			ENTITY::GET_ENTITY_MATRIX(all_vehicles[i], &rightVector, &forwardVector, &upVector, &position); //Blue or red pill
+		//	if (SYSTEM::VDIST2(currentPos.x, currentPos.y, currentPos.z, position.x, position.y, position.z) < 22500) { //150 m.
+				//if (ENTITY::HAS_ENTITY_CLEAR_LOS_TO_ENTITY(vehicle, vehicles[i], 19)) {
+					//Check if we see it (not occluded)
+					model = ENTITY::GET_ENTITY_MODEL(all_vehicles[i]);
+					GAMEPLAY::GET_MODEL_DIMENSIONS(model, &min, &max);
+
+					speedVector = ENTITY::GET_ENTITY_SPEED_VECTOR(all_vehicles[i], false);
+					speed = ENTITY::GET_ENTITY_SPEED(all_vehicles[i]);
+					if (speed > 0) {
+						heading = GAMEPLAY::GET_HEADING_FROM_VECTOR_2D(speedVector.x - currentForwardVector.x, speedVector.y - currentForwardVector.y);
+					}
+					else {
+						heading = GAMEPLAY::GET_HEADING_FROM_VECTOR_2D(forwardVector.x - currentForwardVector.x, forwardVector.y - currentForwardVector.y);
+					}
+
+					if (VEHICLE::IS_THIS_MODEL_A_CAR(model)) classid = 0;
+					else if (VEHICLE::IS_THIS_MODEL_A_BIKE(model)) classid = 1;
+					else if (VEHICLE::IS_THIS_MODEL_A_BICYCLE(model)) classid = 2;
+					else if (VEHICLE::IS_THIS_MODEL_A_QUADBIKE(model)) classid = 3;
+					else if (VEHICLE::IS_THIS_MODEL_A_BOAT(model)) classid = 4;
+					else if (VEHICLE::IS_THIS_MODEL_A_PLANE(model)) classid = 5;
+					else if (VEHICLE::IS_THIS_MODEL_A_HELI(model)) classid = 6;
+					else if (VEHICLE::IS_THIS_MODEL_A_TRAIN(model)) classid = 7;
+					else if (VEHICLE::_IS_THIS_MODEL_A_SUBMERSIBLE(model)) classid = 8;
+					else classid = 9; //unknown (ufo?)
+
+					//Calculate size
+					dim.x = 0.5*(max.x - min.x);
+					dim.y = 0.5*(max.y - min.y);
+					dim.z = 0.5*(max.z - min.z);
+
+					FUR.x = position.x + dim.y*rightVector.x + dim.x*forwardVector.x + dim.z*upVector.x;
+					FUR.y = position.y + dim.y*rightVector.y + dim.x*forwardVector.y + dim.z*upVector.y;
+					FUR.z = position.z + dim.y*rightVector.z + dim.x*forwardVector.z + dim.z*upVector.z;
+					GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(FUR.x, FUR.y, FUR.z, &(FUR.z), 0);
+					FUR.z += 2 * dim.z;
+
+					BLL.x = position.x - dim.y*rightVector.x - dim.x*forwardVector.x - dim.z*upVector.x;
+					BLL.y = position.y - dim.y*rightVector.y - dim.x*forwardVector.y - dim.z*upVector.y;
+					BLL.z = position.z - dim.y*rightVector.z - dim.x*forwardVector.z - dim.z*upVector.z;
+					GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(BLL.x, BLL.y, 1000.0, &(BLL.z), 0);
+
+					Value _vehicle(kObjectType);
+
+					Value _vector(kArrayType);
+					_vector.PushBack(FUR.x - currentPos.x, allocator).PushBack(FUR.y - currentPos.y, allocator).PushBack(FUR.z - currentPos.z, allocator);
+					_vehicle.AddMember("FUR", _vector, allocator);
+					_vector.SetArray();
+					_vector.PushBack(BLL.x - currentPos.x, allocator).PushBack(BLL.y - currentPos.y, allocator).PushBack(BLL.z - currentPos.z, allocator);
+					_vehicle.AddMember("BLL", _vector, allocator).AddMember("speed", speed, allocator).AddMember("heading", heading, allocator).AddMember("classID", classid, allocator);
+
+					
+					float screen_x, screen_y;
+					_vector.SetArray();
+
+					Vector3 edge1 = BLL;
+					Vector3 edge2;
+					Vector3 edge3;
+					Vector3 edge4;
+					Vector3 edge5 = FUR;
+					Vector3 edge6;
+					Vector3 edge7;
+					Vector3 edge8;
+
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge1.x, edge1.y, edge1.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
+
+					edge2.x = edge1.x + 2 * dim.y*rightVector.x;
+					edge2.y = edge1.y + 2 * dim.y*rightVector.y;
+					edge2.z = edge1.z + 2 * dim.y*rightVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge2.x, edge2.y, edge2.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
+
+					edge3.x = edge2.x + 2 * dim.z*upVector.x;
+					edge3.y = edge2.y + 2 * dim.z*upVector.y;
+					edge3.z = edge2.z + 2 * dim.z*upVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge3.x, edge3.y, edge3.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
+
+					edge4.x = edge1.x + 2 * dim.z*upVector.x;
+					edge4.y = edge1.y + 2 * dim.z*upVector.y;
+					edge4.z = edge1.z + 2 * dim.z*upVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge4.x, edge4.y, edge4.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge5.x, edge5.y, edge5.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
+
+					edge6.x = edge5.x - 2 * dim.y*rightVector.x;
+					edge6.y = edge5.y - 2 * dim.y*rightVector.y;
+					edge6.z = edge5.z - 2 * dim.y*rightVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge6.x, edge6.y, edge6.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
+
+					edge7.x = edge6.x - 2 * dim.z*upVector.x;
+					edge7.y = edge6.y - 2 * dim.z*upVector.y;
+					edge7.z = edge6.z - 2 * dim.z*upVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge7.x, edge7.y, edge7.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
+
+					edge8.x = edge5.x - 2 * dim.z*upVector.x;
+					edge8.y = edge5.y - 2 * dim.z*upVector.y;
+					edge8.z = edge5.z - 2 * dim.z*upVector.z;
+					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge8.x, edge8.y, edge8.z, &screen_x, &screen_y);
+					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
+
+
+					_vehicle.AddMember("coords_2d", _vector, allocator);
+					_vehicles.PushBack(_vehicle, allocator);
+
+					//#ifdef DEBUG
+					//for (int i = 0; i < 10000; i++) {
+					//	GRAPHICS::DRAW_LINE(edge1.x, edge1.y, edge1.z, edge2.x, edge2.y, edge2.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge1.x, edge1.y, edge1.z, edge4.x, edge4.y, edge4.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge2.x, edge2.y, edge2.z, edge3.x, edge3.y, edge3.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge3.x, edge3.y, edge3.z, edge4.x, edge4.y, edge4.z, 0, 255, 0, 200);
+
+					//	GRAPHICS::DRAW_LINE(edge5.x, edge5.y, edge5.z, edge6.x, edge6.y, edge6.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge5.x, edge5.y, edge5.z, edge8.x, edge8.y, edge8.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge6.x, edge6.y, edge6.z, edge7.x, edge7.y, edge7.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge7.x, edge7.y, edge7.z, edge8.x, edge8.y, edge8.z, 0, 255, 0, 200);
+
+					//	GRAPHICS::DRAW_LINE(edge1.x, edge1.y, edge1.z, edge7.x, edge7.y, edge7.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge2.x, edge2.y, edge2.z, edge8.x, edge8.y, edge8.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge3.x, edge3.y, edge3.z, edge5.x, edge5.y, edge5.z, 0, 255, 0, 200);
+					//	GRAPHICS::DRAW_LINE(edge4.x, edge4.y, edge4.z, edge6.x, edge6.y, edge6.z, 0, 255, 0, 200);
+					//}
+					//#endif
+
+				//}
+			//}
+		//}
+	}
+
+	d["vehicles"] = _vehicles;
+}
 void Scenario::setVehiclesList() {
 	const int ARR_SIZE = 1024;
 	Vehicle vehicles[ARR_SIZE];

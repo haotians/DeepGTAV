@@ -33,7 +33,6 @@ private:
 public:
 	bool clientConnected = false;
 	Scenario scenario;
-	bool isFormalScenarios = false;
 	Server(unsigned int port);
 	void checkRecvMessage();
 	void checkSendMessage();

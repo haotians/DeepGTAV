@@ -61,24 +61,26 @@ private:
 
 public:
 	int rate;
-
+	bool isFormalScenarios = false;
 	void start(const Value& sc, const Value& dc);
 	void stop();
 	void config(const Value& sc, const Value& dc);
 	void setCommands(float throttle, float brake, float steering);
+	void clearAllVehicles(void);
 	void run();
 
-	void buildFormalScenarios(const Value& v, Server *s);
-	void Scenario::buildOneFormalScenario(const Value & cfg, Server * s);
+	void buildFormalScenarios(const Value& v, Server *const s);
+	void Scenario::buildOneFormalScenario(const Value & cfg, Server * const s);
 	ScreenCapturer* screenCapturer;
 	StringBuffer generateMessage();
-
+	StringBuffer generateMessageFormal();
 private:
 	void parseScenarioConfig(const Value& sc, bool setDefaults);
 	void parseDatasetConfig(const Value& dc, bool setDefaults);
 	void buildScenario();
 
 	void setPlayerIntoVehicle();
+	void setVehiclesListFormal();
 	void setVehiclesList();
 	void setPedsList();
 	void setTrafficSignsList();
