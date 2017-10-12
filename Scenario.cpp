@@ -381,7 +381,7 @@ void Scenario::buildOneFormalScenario(const Value & cfg, Server *const server) {
 
 
 	//AI::CLEAR_PED_TASKS(ped);
-
+	WAIT(10000);
 	for (rapidjson::SizeType i = 0; i < vehicle_num; i++) {
 		const Value& v = vehicles[i];
 		//std::string model = std::string(v["model"].GetString());
@@ -426,7 +426,7 @@ void Scenario::buildOneFormalScenario(const Value & cfg, Server *const server) {
 
 	}
 
-	WAIT(5000);
+	WAIT(3000);
 	server->checkSendMessage();
 
 }
@@ -476,6 +476,7 @@ StringBuffer Scenario::generateMessageFormal() {
 
 	d.AddMember("vehicles", a, allocator);
 	d.AddMember("lidar_pts", a, allocator);
+	d.AddMember("current_pos", a, allocator);
 
 	StringBuffer buffer;
 	buffer.Clear();
@@ -655,45 +656,56 @@ void Scenario::setVehiclesListFormal() {
 					Vector3 edge7;
 					Vector3 edge8;
 
-					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge1.x, edge1.y, edge1.z, &screen_x, &screen_y);
+					Value _vector3d(kArrayType);
+					_vector3d.SetArray();
+
+					if (!GRAPHICS::_WORLD3D_TO_SCREEN2D(edge1.x, edge1.y, edge1.z, &screen_x, &screen_y))
+						screen_x = screen_y = -10;
 					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 					edge2.x = edge1.x + 2 * dim.y*rightVector.x;
 					edge2.y = edge1.y + 2 * dim.y*rightVector.y;
 					edge2.z = edge1.z + 2 * dim.y*rightVector.z;
-					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge2.x, edge2.y, edge2.z, &screen_x, &screen_y);
+					if (!GRAPHICS::_WORLD3D_TO_SCREEN2D(edge2.x, edge2.y, edge2.z, &screen_x, &screen_y))
+						screen_x = screen_y = -10;
 					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 					edge3.x = edge2.x + 2 * dim.z*upVector.x;
 					edge3.y = edge2.y + 2 * dim.z*upVector.y;
 					edge3.z = edge2.z + 2 * dim.z*upVector.z;
-					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge3.x, edge3.y, edge3.z, &screen_x, &screen_y);
+					if (!GRAPHICS::_WORLD3D_TO_SCREEN2D(edge3.x, edge3.y, edge3.z, &screen_x, &screen_y))
+						screen_x = screen_y = -10;
 					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 					edge4.x = edge1.x + 2 * dim.z*upVector.x;
 					edge4.y = edge1.y + 2 * dim.z*upVector.y;
 					edge4.z = edge1.z + 2 * dim.z*upVector.z;
-					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge4.x, edge4.y, edge4.z, &screen_x, &screen_y);
+					if (!GRAPHICS::_WORLD3D_TO_SCREEN2D(edge4.x, edge4.y, edge4.z, &screen_x, &screen_y))
+						screen_x = screen_y = -10;
 					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
-					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge5.x, edge5.y, edge5.z, &screen_x, &screen_y);
+					if (!GRAPHICS::_WORLD3D_TO_SCREEN2D(edge5.x, edge5.y, edge5.z, &screen_x, &screen_y))
+						screen_x = screen_y = -10;
 					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 					edge6.x = edge5.x - 2 * dim.y*rightVector.x;
 					edge6.y = edge5.y - 2 * dim.y*rightVector.y;
 					edge6.z = edge5.z - 2 * dim.y*rightVector.z;
-					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge6.x, edge6.y, edge6.z, &screen_x, &screen_y);
+					if (!GRAPHICS::_WORLD3D_TO_SCREEN2D(edge6.x, edge6.y, edge6.z, &screen_x, &screen_y))
+						screen_x = screen_y = -10;
 					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 					edge7.x = edge6.x - 2 * dim.z*upVector.x;
 					edge7.y = edge6.y - 2 * dim.z*upVector.y;
 					edge7.z = edge6.z - 2 * dim.z*upVector.z;
-					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge7.x, edge7.y, edge7.z, &screen_x, &screen_y);
+					if (!GRAPHICS::_WORLD3D_TO_SCREEN2D(edge7.x, edge7.y, edge7.z, &screen_x, &screen_y))
+						screen_x = screen_y = -10;
 					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 					edge8.x = edge5.x - 2 * dim.z*upVector.x;
 					edge8.y = edge5.y - 2 * dim.z*upVector.y;
 					edge8.z = edge5.z - 2 * dim.z*upVector.z;
-					GRAPHICS::_WORLD3D_TO_SCREEN2D(edge8.x, edge8.y, edge8.z, &screen_x, &screen_y);
+					if (!GRAPHICS::_WORLD3D_TO_SCREEN2D(edge8.x, edge8.y, edge8.z, &screen_x, &screen_y))
+						screen_x = screen_y = -10;
 					_vector.PushBack(screen_x, allocator).PushBack(screen_y, allocator);
 
 
@@ -723,6 +735,11 @@ void Scenario::setVehiclesListFormal() {
 			//}
 		//}
 	}
+
+	Value _vector(kArrayType);
+	_vector.SetArray();
+	_vector.PushBack(currentPos.x, allocator).PushBack(currentPos.y, allocator).PushBack(currentPos.z, allocator);
+	d["current_pos"] = _vector;
 
 	d["vehicles"] = _vehicles;
 }

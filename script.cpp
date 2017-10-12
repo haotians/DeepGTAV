@@ -17,8 +17,10 @@ void ScriptMain()
 		}
 		while (server.clientConnected) {
 			server.checkRecvMessage();
-			server.checkSendMessage();
-			server.scenario.run();
+			//server.checkSendMessage();
+			//server.scenario.run();
+			server.clientConnected = false;
+			break;
 		}
 	}
 }

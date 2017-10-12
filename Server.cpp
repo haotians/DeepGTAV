@@ -151,10 +151,12 @@ void Server::checkSendMessage() {
 			debugfile << "CC" << std::endl;
 			if (!readyToSend) {
 				debugfile << "DD" << std::endl;
-				send(ClientSocket, (const char*)&scenario.screenCapturer->length, sizeof(scenario.screenCapturer->length), 0);
-				error = WSAGetLastError();
-				debugfile << "EE" << std::endl;
-				if (error == WSAEWOULDBLOCK) return;
+				do {
+					send(ClientSocket, (const char*)&scenario.screenCapturer->length, sizeof(scenario.screenCapturer->length), 0);
+					error = WSAGetLastError();
+					debugfile << "EE" << std::endl;
+				} while (error == WSAEWOULDBLOCK);
+				//if (error == WSAEWOULDBLOCK) return;
 				debugfile << "FF" << std::endl;
 				if (error != 0) {
 					printf("\nError sending frame length: %d", error);
@@ -168,10 +170,12 @@ void Server::checkSendMessage() {
 
 			while (readyToSend && (sendMessageLen < scenario.screenCapturer->length)) {
 				debugfile << "HH" << std::endl;
-				r = send(ClientSocket, (const char*)(scenario.screenCapturer->pixels + sendMessageLen), scenario.screenCapturer->length - sendMessageLen, 0);
-				error = WSAGetLastError();
-				debugfile << "II" << std::endl;
-				if (error == WSAEWOULDBLOCK) return;
+				do {
+					r = send(ClientSocket, (const char*)(scenario.screenCapturer->pixels + sendMessageLen), scenario.screenCapturer->length - sendMessageLen, 0);
+					error = WSAGetLastError();
+					debugfile << "II" << std::endl;
+				} while (error == WSAEWOULDBLOCK);
+				//if (error == WSAEWOULDBLOCK) return;
 				debugfile << "JJ" << std::endl;
 				if (error != 0 || r <= 1) {
 					printf("\nError sending frame: %d", error);
@@ -189,10 +193,12 @@ void Server::checkSendMessage() {
 			debugfile << "LL" << std::endl;
 			if (!readyToSend) {
 				debugfile << "MM" << std::endl;
-				send(ClientSocket, (const char*)&messageSize, sizeof(messageSize), 0);
-				error = WSAGetLastError();
-				debugfile << "NN" << std::endl;
-				if (error == WSAEWOULDBLOCK) return;
+				do {
+					send(ClientSocket, (const char*)&messageSize, sizeof(messageSize), 0);
+					error = WSAGetLastError();
+					debugfile << "NN" << std::endl;
+				} while (error == WSAEWOULDBLOCK);
+				//if (error == WSAEWOULDBLOCK) return;
 				debugfile << "OO" << std::endl;
 				if (error != 0) {
 					printf("\nError sending message length: %d", error);
@@ -205,11 +211,13 @@ void Server::checkSendMessage() {
 			}
 
 			while (readyToSend && (sendMessageLen < messageSize)) {
-				debugfile << "QQ" << std::endl;
-				r = send(ClientSocket, (const char*)(chmessage + sendMessageLen), messageSize - sendMessageLen, 0);
-				error = WSAGetLastError();
-				debugfile << "RR" << std::endl;
-				if (error == WSAEWOULDBLOCK) return;
+				do {
+					debugfile << "QQ" << std::endl;
+					r = send(ClientSocket, (const char*)(chmessage + sendMessageLen), messageSize - sendMessageLen, 0);
+					error = WSAGetLastError();
+					debugfile << "RR" << std::endl;
+				} while (error == WSAEWOULDBLOCK);
+				//if (error == WSAEWOULDBLOCK) return;
 				debugfile << "SS" << std::endl;
 				if (error != 0 || r <= 1) {
 					printf("\nError sending message: %d", error);
