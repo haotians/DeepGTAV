@@ -426,7 +426,7 @@ void Scenario::buildOneFormalScenario(const Value & cfg, Server *const server) {
 
 	}
 
-	WAIT(3000);
+	WAIT(1500);
 	server->checkSendMessage();
 
 }
@@ -622,17 +622,47 @@ void Scenario::setVehiclesListFormal() {
 					dim.x = 0.5*(max.x - min.x);
 					dim.y = 0.5*(max.y - min.y);
 					dim.z = 0.5*(max.z - min.z);
+					debugfile << "max.x is = " << max.x << std::endl;
+					debugfile << "min.x is = " << min.x << std::endl;
+					debugfile << "max.y is = " << max.y << std::endl;
+					debugfile << "min.y is = " << min.y << std::endl;
+					debugfile << "max.z is = " << max.z << std::endl;
+					debugfile << "min.z is = " << min.z << std::endl;
+
+					float forward_shift = 0.5 * (max.x + min.x);
+					float right_shift   = 0.5 * (max.y + min.y);
+					float up_shift      = 0.5 * (max.z + min.z);
 
 					FUR.x = position.x + dim.y*rightVector.x + dim.x*forwardVector.x + dim.z*upVector.x;
 					FUR.y = position.y + dim.y*rightVector.y + dim.x*forwardVector.y + dim.z*upVector.y;
 					FUR.z = position.z + dim.y*rightVector.z + dim.x*forwardVector.z + dim.z*upVector.z;
-					GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(FUR.x, FUR.y, currentPos.z, &(FUR.z), 0);
-					FUR.z += 2 * dim.z;
+
+					FUR.x += forward_shift * forwardVector.x;
+					FUR.x += right_shift   * rightVector.x;
+					FUR.x += up_shift      * upVector.x;
+					FUR.y += forward_shift * forwardVector.y;
+					FUR.y += right_shift   * rightVector.y;
+					FUR.y += up_shift      * upVector.y;
+					FUR.z += forward_shift * forwardVector.z;
+					FUR.z += right_shift   * rightVector.z;
+					FUR.z += up_shift      * upVector.z;
+					//GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(FUR.x, FUR.y, currentPos.z, &(FUR.z), 0);
+					//FUR.z += 2 * dim.z;
 
 					BLL.x = position.x - dim.y*rightVector.x - dim.x*forwardVector.x - dim.z*upVector.x;
 					BLL.y = position.y - dim.y*rightVector.y - dim.x*forwardVector.y - dim.z*upVector.y;
 					BLL.z = position.z - dim.y*rightVector.z - dim.x*forwardVector.z - dim.z*upVector.z;
-					GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(BLL.x, BLL.y, currentPos.z, &(BLL.z), 0);
+
+					BLL.x += forward_shift * forwardVector.x;
+					BLL.x += right_shift   * rightVector.x;
+					BLL.x += up_shift      * upVector.x;
+					BLL.y += forward_shift * forwardVector.y;
+					BLL.y += right_shift   * rightVector.y;
+					BLL.y += up_shift      * upVector.y;
+					BLL.z += forward_shift * forwardVector.z;
+					BLL.z += right_shift   * rightVector.z;
+					BLL.z += up_shift      * upVector.z;
+					//GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(BLL.x, BLL.y, currentPos.z, &(BLL.z), 0);
 
 					Value _vehicle(kObjectType);
 
