@@ -67,6 +67,7 @@ public:
 	void config(const Value& sc, const Value& dc);
 	void setCommands(float throttle, float brake, float steering);
 	void clearAllVehicles(void);
+	void deleteWorldVehicles(void);
 	void run();
 
 	void buildFormalScenarios(const Value& v, Server *const s);

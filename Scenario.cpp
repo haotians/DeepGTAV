@@ -301,8 +301,28 @@ void Scenario::clearAllVehicles(void) {
 	all_vehicles.clear();
 }
 
+void Scenario::deleteWorldVehicles(void)
+{
+	const int ARR_SIZE = 1024;
+	Vehicle vehicles[ARR_SIZE];
+	int count = worldGetAllVehicles(vehicles, ARR_SIZE);
+	Entity e = PLAYER::PLAYER_PED_ID();
+	if (PED::IS_PED_IN_ANY_VEHICLE(e, 0)) {
+		vehicle = PED::GET_VEHICLE_PED_IS_USING(e);
+	}
+
+	for (int i = 0; i < count; i++)
+	{
+		if (vehicles[i] == vehicle) continue;
+		if (!ENTITY::IS_ENTITY_A_MISSION_ENTITY(vehicles[i]))
+			ENTITY::SET_ENTITY_AS_MISSION_ENTITY(vehicles[i], TRUE, TRUE);
+		VEHICLE::DELETE_VEHICLE(&vehicles[i]);
+	}
+}
+
 void Scenario::buildOneFormalScenario(const Value & cfg, Server *const server) {
 	clearAllVehicles();
+	deleteWorldVehicles();
 	Vector3 pos, rotation;
 	Hash vehicleHash;
 	float heading;
@@ -382,6 +402,7 @@ void Scenario::buildOneFormalScenario(const Value & cfg, Server *const server) {
 
 	//AI::CLEAR_PED_TASKS(ped);
 	WAIT(10000);
+	deleteWorldVehicles();
 	for (rapidjson::SizeType i = 0; i < vehicle_num; i++) {
 		const Value& v = vehicles[i];
 		//std::string model = std::string(v["model"].GetString());
@@ -584,9 +605,7 @@ void Scenario::setVehiclesListFormal() {
 		currentPos = ENTITY::GET_ENTITY_COORDS(e, false);
 	Vector3 currentForwardVector = ENTITY::GET_ENTITY_FORWARD_VECTOR(vehicle);
 
-	int count = worldGetAllVehicles(vehicles, ARR_SIZE);
-
-	count = all_vehicles.size();
+	int count = all_vehicles.size();
 	for (int i = 0; i < count; i++) {
 		if (all_vehicles[i] == vehicle) continue; //Don't process own car!
 		//if (ENTITY::IS_ENTITY_ON_SCREEN(vehicles[i])) {
