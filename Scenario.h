@@ -69,6 +69,7 @@ public:
 	void clearAllVehicles(void);
 	void deleteWorldVehicles(void);
 	void run();
+	void attachCamera(void);
 
 	void buildFormalScenarios(const Value& v, Server *const s);
 	void Scenario::buildOneFormalScenario(const Value & cfg, Server * const s);

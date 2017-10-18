@@ -8,12 +8,13 @@
 #include <time.h>
 #include <iostream>
 #include <fstream>
+#include <Eigen/Core>
 #include "server.h"
 
 char* Scenario::weatherList[14] = { "CLEAR", "EXTRASUNNY", "CLOUDS", "OVERCAST", "RAIN", "CLEARING", "THUNDER", "SMOG", "FOGGY", "XMAS", "SNOWLIGHT", "BLIZZARD", "NEUTRAL", "SNOW" };
 char* Scenario::vehicleList[3] = { "blista", "voltic", "packer" };
 extern std::ofstream debugfile("debug.txt", std::ofstream::out | std::ofstream::app);
-
+static Eigen::Vector2f get_2d_from_3d(const Eigen::Vector3f& vertex, const Eigen::Vector3f& cam_coords, const Eigen::Vector3f& cam_rotation, float cam_near_clip, float cam_field_of_view, bool draw_debug = false);
 std::vector<Vehicle> all_vehicles;
 //class Server;
 #define DEBUG 1
@@ -278,6 +279,30 @@ void Scenario::run() {
 	scriptWait(0);
 }
 
+void Scenario::attachCamera(void)
+{
+	Vector3 currentPos;
+	Entity e = PLAYER::PLAYER_PED_ID();
+	if (PED::IS_PED_IN_ANY_VEHICLE(e, 0)) {
+		vehicle = PED::GET_VEHICLE_PED_IS_USING(e);
+		currentPos = ENTITY::GET_ENTITY_COORDS(vehicle, false);
+	}
+	else
+		currentPos = ENTITY::GET_ENTITY_COORDS(e, false);
+
+
+	Vector3 rotation = ENTITY::GET_ENTITY_ROTATION(vehicle, 1);
+	CAM::DESTROY_ALL_CAMS(TRUE);
+	camera = CAM::CREATE_CAM("DEFAULT_SCRIPTED_CAMERA", TRUE);
+	CAM::ATTACH_CAM_TO_ENTITY(camera, vehicle, 0, 0.5, 0.8, TRUE);
+
+	CAM::SET_CAM_FOV(camera, 60);
+	CAM::SET_CAM_ACTIVE(camera, TRUE);
+	CAM::SET_CAM_ROT(camera, rotation.x, rotation.y, rotation.z, 1);
+	CAM::SET_CAM_INHERIT_ROLL_VEHICLE(camera, TRUE);
+	CAM::RENDER_SCRIPT_CAMS(TRUE, FALSE, 0, TRUE, TRUE);
+}
+
 void Scenario::stop() {
 	if (!running) return;
 	running = false;
@@ -403,6 +428,7 @@ void Scenario::buildOneFormalScenario(const Value & cfg, Server *const server) {
 	//AI::CLEAR_PED_TASKS(ped);
 	WAIT(10000);
 	deleteWorldVehicles();
+	attachCamera();
 	for (rapidjson::SizeType i = 0; i < vehicle_num; i++) {
 		const Value& v = vehicles[i];
 		//std::string model = std::string(v["model"].GetString());
@@ -503,10 +529,10 @@ StringBuffer Scenario::generateMessageFormal() {
 	buffer.Clear();
 	Writer<StringBuffer> writer(buffer);
 
-	screenCapturer->capture();
+	//screenCapturer->capture();
 	vehicles = true;
 
-
+	
 	if (vehicles) setVehiclesListFormal();
 	//if (peds) setPedsList();
 	//if (trafficSigns); //TODO
@@ -598,8 +624,10 @@ void Scenario::setVehiclesListFormal() {
 
 	Entity e = PLAYER::PLAYER_PED_ID();
 	if (PED::IS_PED_IN_ANY_VEHICLE(e, 0)) {
+		debugfile << "INSIDE VEHICLE" << std::endl;
 		vehicle = PED::GET_VEHICLE_PED_IS_USING(e);
 		currentPos = ENTITY::GET_ENTITY_COORDS(vehicle, false);
+		debugfile << "Vehicle Pos is : " << currentPos.x << ", " << currentPos.y << ", " << currentPos.z << std::endl;
 	}
 	else
 		currentPos = ENTITY::GET_ENTITY_COORDS(e, false);
@@ -759,8 +787,94 @@ void Scenario::setVehiclesListFormal() {
 
 
 					_vehicle.AddMember("coords_2d", _vector, allocator);
-					_vehicles.PushBack(_vehicle, allocator);
+					
 
+
+
+					//Vector3 rotation = ENTITY::GET_ENTITY_ROTATION(vehicle, 1);
+					//CAM::DESTROY_ALL_CAMS(TRUE);
+					//camera = CAM::CREATE_CAM("DEFAULT_SCRIPTED_CAMERA", TRUE);
+
+					currentPos = ENTITY::GET_ENTITY_COORDS(vehicle, false);
+
+					//debugfile << "===========================" << std::endl;
+					//debugfile << "Vehicle Pos is : " << currentPos.x << ", " << currentPos.y << ", " << currentPos.z << std::endl;
+
+					//CAM::ATTACH_CAM_TO_ENTITY(camera, vehicle, 0, 0.5, 0.8, TRUE);
+
+
+					Vector3 cam_pos = CAM::GET_CAM_COORD(camera);
+					//debugfile << "cam_pos is : " << (float)(cam_pos.x) << ", " << (float)(cam_pos.y) << ", " << (float)(cam_pos.z) << std::endl;
+					cam_pos.x = currentPos.x;
+					cam_pos.y = currentPos.y + 0.5;
+					cam_pos.z = currentPos.z + 0.8;
+					//debugfile << "===========================" << std::endl;
+
+					//CAM::SET_CAM_FOV(camera, 60);
+					//CAM::SET_CAM_ACTIVE(camera, TRUE);
+					//CAM::SET_CAM_ROT(camera, rotation.x, rotation.y, rotation.z, 1);
+					//CAM::SET_CAM_INHERIT_ROLL_VEHICLE(camera, TRUE);
+					//CAM::RENDER_SCRIPT_CAMS(TRUE, FALSE, 0, TRUE, TRUE);
+
+
+
+					
+
+
+					//Vector3 game_cam_rot = CAM::GET_GAMEPLAY_CAM_ROT(1);
+					//Vector3 game_cam_pos = CAM::GET_GAMEPLAY_CAM_COORD();
+					//float game_cam_fov = CAM::GET_GAMEPLAY_CAM_FOV();
+
+					//CAM::DESTROY_ALL_CAMS(TRUE);
+					//camera = CAM::CREATE_CAM("DEFAULT_SCRIPTED_CAMERA", TRUE);
+					////if (strcmp(_vehicle, "packer") == 0) CAM::ATTACH_CAM_TO_ENTITY(camera, vehicle, 0, 2.35, 1.7, TRUE);
+					////else 
+					////::ATTACH_CAM_TO_ENTITY(camera, vehicle, 0, 0.5, 0.8, TRUE);
+
+					//CAM::ATTACH_CAM_TO_ENTITY(camera, vehicle, game_cam_pos.x - currentPos.x, game_cam_pos.y - currentPos.y, game_cam_pos.z - currentPos.z, TRUE);
+					//CAM::SET_CAM_FOV(camera, game_cam_fov); // 60
+					//CAM::SET_CAM_ACTIVE(camera, TRUE);
+					//CAM::SET_CAM_ROT(camera, game_cam_rot.x, game_cam_rot.y, game_cam_rot.z, 1); // rotation
+					//CAM::SET_CAM_INHERIT_ROLL_VEHICLE(camera, TRUE);
+					//CAM::RENDER_SCRIPT_CAMS(TRUE, FALSE, 0, TRUE, TRUE);
+
+
+
+
+					Cam rendering_cam = camera;//CAM::GET_RENDERING_CAM();
+					Vector3 theta = CAM::GET_CAM_ROT(rendering_cam, 1);
+					//Vector3 cam_pos = CAM::GET_CAM_COORD(camera);
+					float fov = CAM::GET_CAM_FOV(rendering_cam);
+					float near_clip = CAM::GET_CAM_NEAR_CLIP(rendering_cam);
+
+					debugfile << "cam_id is : " << rendering_cam << std::endl;
+					debugfile << "theta is : " << theta.x << ", " << theta.y << ", " << theta.z << std::endl;
+					debugfile << "cam_pos is : " << cam_pos.x << ", " << cam_pos.y << ", " << cam_pos.z << std::endl;
+					debugfile << "fov is : " << fov << std::endl;
+					debugfile << "near_clip is : " << near_clip << std::endl;
+
+
+					Vector3 edges[9] = { edge1, edge1, edge2, edge3, edge4, edge5, edge6, edge7, edge8 };
+
+					_vector.SetArray();
+					//Eigen::Vector3f
+					screenCapturer->capture();
+					for (int i = 1; i < 9; i++) {
+						debugfile << "edge " << i << ": " << edges[i].x << ", " << edges[i].y << ", " << edges[i].z << std::endl;
+						Eigen::Vector2f uv = get_2d_from_3d(Eigen::Vector3f(edges[i].x, edges[i].y, edges[i].z),
+							Eigen::Vector3f(cam_pos.x, cam_pos.y, cam_pos.z),
+							Eigen::Vector3f(theta.x, theta.y, theta.z), near_clip, fov);
+						_vector.PushBack(uv(0), allocator).PushBack(uv(1), allocator);
+						debugfile << "uv(0) = " << uv(0) << std::endl;
+						debugfile << "uv(1) = " << uv(1) << std::endl;
+					}
+					_vehicle.AddMember("coords_2d_computed", _vector, allocator);
+
+					//CAM::RENDER_SCRIPT_CAMS(FALSE, FALSE, 0, TRUE, TRUE);
+
+
+
+					_vehicles.PushBack(_vehicle, allocator);
 					//#ifdef DEBUG
 					//for (int i = 0; i < 10000; i++) {
 					//	GRAPHICS::DRAW_LINE(edge1.x, edge1.y, edge1.z, edge2.x, edge2.y, edge2.z, 0, 255, 0, 200);
@@ -1104,4 +1218,108 @@ void Scenario::setDirection(){
 
 void Scenario::setReward() {
 	d["reward"] = rewarder->computeReward(vehicle);
+}
+
+
+Eigen::Vector3f rotate(Eigen::Vector3f a, Eigen::Vector3f theta)
+{
+	Eigen::Vector3f d;
+
+	d(0) = (float)cos((double)theta(2))*((float)cos((double)theta(1))*a(0) + (float)sin((double)theta(1))*((float)sin((double)theta(0))*a(1) + (float)cos((double)theta(0))*a(2))) - (float)sin((double)theta(2))*((float)cos((double)theta(0))*a(1) - (float)sin((double)theta(0))*a(2));
+	d(1) = (float)sin((double)theta(2))*((float)cos((double)theta(1))*a(0) + (float)sin((double)theta(1))*((float)sin((double)theta(0))*a(1) + (float)cos((double)theta(0))*a(2))) + (float)cos((double)theta(2))*((float)cos((double)theta(0))*a(1) - (float)sin((double)theta(0))*a(2));
+	d(2) = -(float)sin((double)theta(1))*a(0) + (float)cos((double)theta(1))*((float)sin((double)theta(0))*a(1) + (float)cos((double)theta(0))*a(2));
+
+	return d;
+}
+
+static Eigen::Vector2f get_2d_from_3d(const Eigen::Vector3f& vertex, const Eigen::Vector3f& cam_coords, const Eigen::Vector3f& cam_rotation, float cam_near_clip, float cam_field_of_view, bool draw_debug) {
+	// Inspired by Artur Filopowicz: Video Games for Autonomous Driving: https://github.com/arturf1/GTA5-Scripts/blob/master/Annotator.cs#L379
+	draw_debug = false;
+	static const Eigen::Vector3f WORLD_NORTH(0.0, 1.0, 0.0);
+	static const Eigen::Vector3f WORLD_UP(0.0, 0.0, 1.0);
+	static const Eigen::Vector3f WORLD_EAST(1.0, 0.0, 0.0);
+	Eigen::Vector3f theta = (3.14159 / 180.0) * cam_rotation;
+	auto cam_dir = rotate(WORLD_NORTH, theta);
+	//if (draw_debug)
+	//{
+	//	auto cam_dir_line_end = cam_dir + cam_coords;
+
+	//	GRAPHICS::DRAW_LINE(cam_coords.x(), cam_coords.y(), cam_coords.z(), cam_dir_line_end.x(), cam_dir_line_end.y(), cam_dir_line_end.z(), 0, 255, 0, 200);
+	//}
+	auto clip_plane_center = cam_coords + cam_near_clip * cam_dir;
+	auto camera_center = -cam_near_clip * cam_dir;
+	auto near_clip_height = 2 * cam_near_clip * tan(cam_field_of_view / 2. * (3.14159 / 180.)); // field of view is returned vertically
+	auto near_clip_width = near_clip_height * GRAPHICS::_GET_SCREEN_ASPECT_RATIO(false);
+
+	const Eigen::Vector3f cam_up = rotate(WORLD_UP, theta);
+	const Eigen::Vector3f cam_east = rotate(WORLD_EAST, theta);
+	const Eigen::Vector3f near_clip_to_target = vertex - clip_plane_center; // del
+
+	Eigen::Vector3f camera_to_target = near_clip_to_target - camera_center; // Total distance - subtracting a negative to add clip distance
+
+	if (draw_debug)
+	{
+		auto cam_up_end_line = cam_up + cam_coords;
+		GRAPHICS::DRAW_LINE(cam_coords.x(), cam_coords.y(), cam_coords.z(), cam_up_end_line.x(), cam_up_end_line.y(), cam_up_end_line.z(), 100, 100, 255, 200);
+		auto cam_east_end_line = cam_up + cam_coords;
+		GRAPHICS::DRAW_LINE(cam_coords.x(), cam_coords.y(), cam_coords.z(), cam_east_end_line.x(), cam_east_end_line.y(), cam_east_end_line.z(), 100, 100, 255, 200);
+		auto del_draw = cam_coords + near_clip_to_target;
+		GRAPHICS::DRAW_LINE(clip_plane_center.x(), clip_plane_center.y(), clip_plane_center.z(), del_draw.x(), del_draw.y(), del_draw.z(), 255, 255, 100, 255);
+		auto viewerDistDraw = cam_coords + camera_to_target;
+		GRAPHICS::DRAW_LINE(cam_coords.x(), cam_coords.y(), cam_coords.z(), viewerDistDraw.x(), viewerDistDraw.y(), viewerDistDraw.z(), 255, 100, 100, 255);
+	}
+	Eigen::Vector3f camera_to_target_unit_vector = camera_to_target * (1. / camera_to_target.norm()); // Unit vector in direction of plane / line intersection
+
+	double view_plane_dist = cam_near_clip / cam_dir.dot(camera_to_target_unit_vector);
+
+	Eigen::Vector3f up3d, forward3d, right3d;
+	up3d = rotate(WORLD_UP, cam_rotation);
+	right3d = rotate(WORLD_EAST, cam_rotation);
+	forward3d = rotate(WORLD_NORTH, cam_rotation);
+	Eigen::Vector3f new_origin = clip_plane_center + (near_clip_height / 2.) * cam_up - (near_clip_width / 2.) * cam_east;
+
+	if (draw_debug)
+	{
+		auto top_right = new_origin + near_clip_width * right3d;
+
+		GRAPHICS::DRAW_LINE(new_origin.x(), new_origin.y(), new_origin.z(), top_right.x(), top_right.y(), top_right.z(), 100, 255, 100, 255);
+
+
+
+		auto bottom_right = top_right - near_clip_height * up3d;
+
+		GRAPHICS::DRAW_LINE(bottom_right.x(), bottom_right.y(), bottom_right.z(), top_right.x(), top_right.y(), top_right.z(), 100, 255, 100, 255);
+
+
+
+		auto bottom_left = bottom_right - near_clip_width * right3d;
+
+		GRAPHICS::DRAW_LINE(bottom_right.x(), bottom_right.y(), bottom_right.z(), bottom_left.x(), bottom_left.y(), bottom_left.z(), 100, 255, 100, 255);
+		GRAPHICS::DRAW_LINE(bottom_left.x(), bottom_left.y(), bottom_left.z(), new_origin.x(), new_origin.y(), new_origin.z(), 100, 255, 100, 255);
+	}
+	Eigen::Vector2f ret;
+
+	bool use_artur_method = true;
+
+	if (use_artur_method)
+	{
+		Eigen::Vector3f view_plane_point = view_plane_dist * camera_to_target_unit_vector + camera_center;
+		view_plane_point = (view_plane_point + clip_plane_center) - new_origin;
+		double viewPlaneX = view_plane_point.dot(cam_east) / cam_east.dot(cam_east);
+		double viewPlaneZ = view_plane_point.dot(cam_up) / cam_up.dot(cam_up);
+		double screenX = viewPlaneX / near_clip_width;
+		double screenY = -viewPlaneZ / near_clip_height;
+		ret = { screenX, screenY };
+	}
+	else
+	{
+		auto intersection = cam_coords + view_plane_dist * camera_to_target_unit_vector;
+		auto center_to_intersection = clip_plane_center - intersection;
+		auto x_dist = center_to_intersection.dot(right3d);
+		auto z_dist = center_to_intersection.dot(up3d);
+		auto screen_x = 1. - (near_clip_width / 2. + x_dist) / near_clip_width;
+		auto screen_y = (near_clip_height / 2. + z_dist) / near_clip_height;
+		ret = { screen_x, screen_y };
+	}
+	return ret;
 }
