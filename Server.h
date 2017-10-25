@@ -35,6 +35,6 @@ public:
 	Scenario scenario;
 	Server(unsigned int port);
 	void checkRecvMessage();
-	void checkSendMessage();
+	bool checkSendMessage();
 	void checkClient();
 };
